@@ -2,7 +2,6 @@ import nodemailer from 'nodemailer';
 import redisClient from "../config/redisClient";
 import dotenv from 'dotenv';
 import { AppError } from './appError';
-import bcrypt from 'bcrypt';
 import crypto from 'crypto';
 dotenv.config();
 

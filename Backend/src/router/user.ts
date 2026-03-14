@@ -7,5 +7,5 @@ const router = express.Router();
 router.post('/request-otp', userMiddleware.sendOtpValidation, validateRequest, userController.requestOtp);
 router.post('/verify-otp', userMiddleware.verifyOtpValidation, validateRequest, userController.verifyOtp);
 router.post('/register', userMiddleware.registerValidation, validateRequest, userController.register);
-
+router.post('/login', userMiddleware.loginValidation, validateRequest, userController.login);
 export default router;

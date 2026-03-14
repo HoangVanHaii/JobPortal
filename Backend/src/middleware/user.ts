@@ -13,3 +13,7 @@ export const registerValidation = [
     body('verifyToken').notEmpty().withMessage('Verify token không được để trống'),
     body('password').isLength({ min: 6 }).withMessage('Mật khẩu phải có ít nhất 6 ký tự')
 ]
+export const loginValidation = [
+    body('email').isEmail().withMessage('Vui lòng nhập email hợp lệ'),
+    body('password').notEmpty().withMessage('Mật khẩu không được để trống')
+]
