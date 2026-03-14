@@ -3,6 +3,7 @@ import dotenv from 'dotenv';
 import cors from 'cors';
 import { connectMySQL } from './src/config/database';
 import mongoose from 'mongoose';
+import companyRouter from './src/router/company'
 
 dotenv.config();
 
@@ -11,6 +12,9 @@ const PORT = process.env.PORT || 5000;
 
 app.use(cors());
 app.use(express.json());
+
+app.use("/api/employer/company", companyRouter);
+
 
 app.get('/', (req: Request, res: Response) => {
     res.send('Job Portal API with AI is running... 🚀');
