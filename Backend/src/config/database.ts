@@ -15,15 +15,15 @@ const pool : Pool = mysql.createPool({
     queueLimit: 0
 });
 
-export const connectMySQL = async () => {
+export const connectDatabase = async () => {
     try {
         const connection = await pool.getConnection();
-        console.log('✅ MySQL Connected successfully!');
+        console.log('Kết nối MySQL thành công!');
         await mongoose.connect(process.env.MONGO_URL || 'mongodb://localhost:27017');
-        console.log('✅ MongoDB Connected successfully!');
+        console.log('Kết nối MongoDB thành công!');
         connection.release();
     } catch (error) {
-        console.error('❌ MySQL Connection failed:', error);
+        console.error('Kết nối MySQL hoặc MongoDB thất bại:', error);
         process.exit(1);
     }
 };
