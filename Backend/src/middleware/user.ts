@@ -1,6 +1,4 @@
 import { body } from 'express-validator'
-import { Request, Response, NextFunction } from 'express';
-import { AppError } from '../utils/appError';
 
 export const sendOtpValidation = [
     body('email').isEmail().withMessage('Vui lòng nhập email hợp lệ')

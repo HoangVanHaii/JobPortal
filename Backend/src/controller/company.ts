@@ -59,8 +59,9 @@ export const UpdateCompanyStatus = async (req: Request, res: Response, next: Nex
 export const GetCompanyDetail = async (req: Request, res: Response, next: NextFunction) => {
     try {
         const CompanyId: number = Number(req.params.CompanyID);
-        
-        const company = await CompanyService.GetCompanyDetail("Admins", CompanyId);
+        const role = req.user?.role || "Candidate";
+        console.log(role);
+        const company = await CompanyService.GetCompanyDetail(role, CompanyId);
 
         return res.status(200).json({
             success: true,
@@ -74,7 +75,8 @@ export const GetCompanyDetail = async (req: Request, res: Response, next: NextFu
 }
 export const GetAllCompany = async (req: Request, res: Response, next: NextFunction) => {
     try {
-        const companies = await CompanyService.GetAllCompany("Admin");
+        const role = req.user?.role || "Candidate";
+        const companies = await CompanyService.GetAllCompany(role);
 
         return res.status(200).json({
             success: true,
