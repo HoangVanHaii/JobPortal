@@ -14,7 +14,7 @@ const PORT = process.env.PORT || 5000;
 app.use(cors());
 app.use(express.json());
 
-app.use("/api/employer/company", companyRouter);
+app.use("/api/company", companyRouter);
 
 app.get('/', (req: Request, res: Response) => {
     res.send('Job Portal API with AI is running... 🚀');
