@@ -19,12 +19,9 @@ export const CreateCompanyValidation = [
         .isEmail().withMessage('Email không đúng định dạng'),
     body('City')
         .trim()
-        .optional({ checkFalsy: true })
         .notEmpty().withMessage('Thành phố không được để trống'),
-
     body('Address')
         .trim()
-        .optional({ checkFalsy: true })
         .notEmpty().withMessage('Địa chỉ cụ thể không được để trống'),
 ]
 export const CompanyIdValidation = [
