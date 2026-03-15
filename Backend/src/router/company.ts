@@ -3,14 +3,14 @@ import * as companyController from '../controller/company'
 import * as companyMiddleware from '../middleware/company'
 import { validateRequest } from "../middleware/validateRequest";
 import { uploadCompany } from "../utils/uploadCompany";
-
+import { authMiddleware, isAdmin, isEmployer } from "../middleware/auth";
+import { optionalAuth } from "../middleware/optionalAuth";
 const router = Router();
 
-router.post('/', uploadCompany.single('LogoUrl'), companyMiddleware.CreateCompanyValidation, validateRequest, companyController.CreateCompany);
-router.put('/:CompanyID', uploadCompany.single('LogoUrl'), validateRequest, companyController.UpdateCompany);
-router.put('/status/:CompanyID', companyController.UpdateCompanyStatus);
-router.get('/:CompanyID', companyController.GetCompanyDetail);
-router.get('/', companyController.GetAllCompany);
-
+router.post('/', authMiddleware, isEmployer, uploadCompany.single('LogoUrl'), companyMiddleware.CreateCompanyValidation, validateRequest, companyController.CreateCompany);
+router.put('/:CompanyID', authMiddleware, isEmployer, uploadCompany.single('LogoUrl'), companyMiddleware.UpdateCompanyValidation, validateRequest, companyController.UpdateCompany);
+router.put('/status/:CompanyID', authMiddleware, isAdmin, companyMiddleware.UpdateCompanyStatusValidation, validateRequest, companyController.UpdateCompanyStatus);
+router.get('/:CompanyID', optionalAuth, companyMiddleware.CompanyIdValidation, validateRequest, companyController.GetCompanyDetail);
+router.get('/', optionalAuth, companyController.GetAllCompany);
 
 export default router;
