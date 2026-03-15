@@ -17,3 +17,6 @@ export const loginValidation = [
     body('email').isEmail().withMessage('Vui lòng nhập email hợp lệ'),
     body('password').notEmpty().withMessage('Mật khẩu không được để trống')
 ]
+export const refreshTokenValidation = [
+    body('refreshToken').notEmpty().withMessage('Refresh token không được để trống')
+]
