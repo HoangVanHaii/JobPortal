@@ -6,6 +6,7 @@ import companyRouter from './src/router/company'
 import { connectDatabase } from './src/config/database';
 import { errorHandler } from './src/middleware/errorHandler';
 import userRouter from './src/router/user';
+import adminRouter from './src/router/admin/user';
 dotenv.config();
 
 const app = express();
@@ -20,6 +21,7 @@ app.get('/', (req: Request, res: Response) => {
     res.send('Job Portal API with AI is running... 🚀');
 });
 app.use('/api/users', userRouter);
+app.use('/api/admin', adminRouter);
 app.use(errorHandler);
 connectDatabase();
 

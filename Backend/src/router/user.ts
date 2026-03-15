@@ -8,4 +8,6 @@ router.post('/request-otp', userMiddleware.sendOtpValidation, validateRequest, u
 router.post('/verify-otp', userMiddleware.verifyOtpValidation, validateRequest, userController.verifyOtp);
 router.post('/register', userMiddleware.registerValidation, validateRequest, userController.register);
 router.post('/login', userMiddleware.loginValidation, validateRequest, userController.login);
+router.post('/refresh-token', userMiddleware.refreshTokenValidation, validateRequest, userController.refreshToken);
+
 export default router;
