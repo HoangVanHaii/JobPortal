@@ -5,11 +5,13 @@ import { uploadToCloudinary } from '../utils/uploadToCloudinary';
 export const CreateCompany = async (req: Request, res: Response, next: NextFunction) => {
     try {
         const companyData: ICreateCompany = req.body;
+        const position = req.body.Position;
         if (req.file) {
             const LogoUrl = await uploadToCloudinary('Company', req.file);
             companyData.LogoUrl = LogoUrl;
         }
         const CompanyID = await CompanyService.CreateCompany(companyData);
+        // const EmployerID =
         return res.status(201).json({
             success: true,
             message: "Tạo Công ty thành công",
