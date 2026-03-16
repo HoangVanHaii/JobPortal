@@ -2,6 +2,9 @@ import { Response, Request, NextFunction } from 'express'
 import * as CompanyService from '../service/company'
 import { ICreateCompany, IUpdateCompany } from '../interface/company';
 import { uploadToCloudinary } from '../utils/uploadToCloudinary';
+import { createEmployer } from '../service/employer';
+import { Employer } from '../interface/employer';
+
 export const CreateCompany = async (req: Request, res: Response, next: NextFunction) => {
     try {
         const companyData: ICreateCompany = req.body;
@@ -11,11 +14,13 @@ export const CreateCompany = async (req: Request, res: Response, next: NextFunct
             companyData.LogoUrl = LogoUrl;
         }
         const CompanyID = await CompanyService.CreateCompany(companyData);
-        // const EmployerID =
+        const EmployerID = await createEmployer({ EmployerID: req.user?.id, CompanyID: CompanyID, Position: position } as Employer);
+        console.log(EmployerID);
         return res.status(201).json({
             success: true,
             message: "Tạo Công ty thành công",
-            CompanyID
+            CompanyID,
+            EmployerID
         });
 
     } catch (error) {

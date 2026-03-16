@@ -1,5 +1,5 @@
 export interface Employer {
     EmployerID?: number;
-    CompanyID: string;
+    CompanyID: number;
     Position: string;
 }
