@@ -4,18 +4,29 @@ import { ICreateCompany, IUpdateCompany } from '../interface/company';
 import { uploadToCloudinary } from '../utils/uploadToCloudinary';
 import { createEmployer } from '../service/employer';
 import { Employer } from '../interface/employer';
+import pool from "../config/database";
+
 
 export const CreateCompany = async (req: Request, res: Response, next: NextFunction) => {
+    const connection = await pool.getConnection();
+    const uploadedAssets: string[] = [];
+
     try {
+        await connection.beginTransaction();
+
         const companyData: ICreateCompany = req.body;
         const position = req.body.Position;
-        if (req.file) {
-            const LogoUrl = await uploadToCloudinary('Company', req.file);
-            companyData.LogoUrl = LogoUrl;
+        if (req.files) {
+            const uploaded = await CompanyService.handleCompanyUploads(req.files as Express.Multer.File[]);
+            uploadedAssets.push(...uploaded.publicIds);
+            Object.assign(companyData, uploaded.data);
         }
-        const CompanyID = await CompanyService.CreateCompany(companyData);
-        const EmployerID = await createEmployer({ EmployerID: req.user?.id, CompanyID: CompanyID, Position: position } as Employer);
-        console.log(EmployerID);
+    
+        companyData.CreatedBy = req.user!.id;
+        const CompanyID = await CompanyService.CreateCompany(connection, companyData);
+        const EmployerID = await createEmployer(connection, { EmployerID: req.user!.id, CompanyID: CompanyID, Position: position } as Employer);
+
+        await connection.commit();
         return res.status(201).json({
             success: true,
             message: "Tạo Công ty thành công",
@@ -24,7 +35,12 @@ export const CreateCompany = async (req: Request, res: Response, next: NextFunct
         });
 
     } catch (error) {
+        await connection.rollback();
+        await CompanyService.cleanupCloudinary(uploadedAssets);
         next(error);
+    }
+    finally {
+        connection.release();
     }
 }
 
@@ -32,12 +48,11 @@ export const UpdateCompany = async (req: Request, res: Response, next: NextFunct
     try {
         const companyData: IUpdateCompany = req.body;
         const CompanyId: number = Number(req.params.CompanyID);
-        if (req.file) {
-            const LogoUrl = await uploadToCloudinary('Company', req.file);
-            companyData.LogoUrl = LogoUrl;
+        if (req.files) {
+            const uploaded = await CompanyService.handleCompanyUploads(req.files as Express.Multer.File[]);
+            Object.assign(companyData, uploaded.data)
         }
         await CompanyService.UpdateCompany(CompanyId, companyData);
-
         return res.status(200).json({
             success: true,
             message: "Cập nhật thông tin công ty thành công",
