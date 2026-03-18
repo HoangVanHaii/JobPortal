@@ -5,6 +5,9 @@ export const CreateCompanyValidation = [
     body("CompanyName")
         .trim()
         .notEmpty().withMessage('Tên công ty không được để trống'),
+    body("TaxCode")
+        .trim()
+        .matches(/^\d{10}$/).withMessage("TaxCode phải 10 chữ số"),
     body('Industry')
         .notEmpty().withMessage('Ngành nghề là bắt buộc'),
     body('CompanyDescription')
@@ -20,9 +23,14 @@ export const CreateCompanyValidation = [
     body('City')
         .trim()
         .notEmpty().withMessage('Thành phố không được để trống'),
-    body('Address')
-        .trim()
-        .notEmpty().withMessage('Địa chỉ cụ thể không được để trống'),
+    body('BusinessLicenseUrl')
+        .custom((value, { req }) => {
+            if (!req.files || !(req.files as any).find((f: any) => f.fieldname === 'BusinessLicenseUrl')) {
+                throw new Error('Vui lòng upload ảnh Giấy phép kinh doanh');
+            }
+            return true;
+        }),
+        
 ]
 export const CompanyIdValidation = [
     param('CompanyID')
@@ -48,7 +56,10 @@ export const UpdateCompanyValidation = [
     body('CompanyDescription')
         .optional()
         .trim(),
-
+    body("TaxCode")
+        .optional()
+        .trim()
+        .matches(/^\d{10}$/).withMessage("TaxCode phải 10 chữ số"),
     body('Industry')
         .optional()
         .trim()
@@ -68,8 +79,4 @@ export const UpdateCompanyValidation = [
         .optional()
         .trim()
         .notEmpty().withMessage("Thành phố không được để trống"),
-
-    body('Address')
-        .optional()
-        .trim(),
 ]

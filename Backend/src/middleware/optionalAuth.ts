@@ -6,19 +6,19 @@ export const optionalAuth = ( req: Request, res: Response, next: NextFunction) =
         const authHeader = req.headers.authorization;
 
         if (!authHeader || !authHeader.startsWith("Bearer ")) {
-        return next();
+            return next();
         }
 
         const token = authHeader.split(" ")[1];
 
         const decoded: any = jwt.verify(
-        token,
-        process.env.JWT_SECRET as string
+            token,
+            process.env.JWT_SECRET as string
         );
 
         req.user = {
-        id: decoded.userId,
-        role: decoded.role,
+            id: decoded.userId,
+            role: decoded.role,
         };
 
         next();

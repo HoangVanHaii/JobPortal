@@ -1,12 +1,19 @@
+import { PoolConnection } from "mysql2/promise";
 import pool from "../config/database";
 import { ICompanyDetailResponse, ICompanyResponse, ICreateCompany, IUpdateCompany } from "../interface/company";
 import { AppError } from "../utils/appError";
+import { uploadToCloudinary } from "../utils/uploadToCloudinary";
+import cloudinary from "../config/cloudinary";
 
-export const CreateCompany = async (company: ICreateCompany): Promise<number> => {
+export const CreateCompany = async (connection: PoolConnection, company: ICreateCompany): Promise<number> => {
+    const isExistTaxCode = await checkTaxCodeCompany(company.TaxCode);
+    if (isExistTaxCode) {
+        throw new AppError("Mã số thuế đã tồn tại", 409);
+    }
     const query = `
         INSERT INTO companies 
-        (CompanyName, CompanyDescription, Industry, Website, LogoUrl, ContactEmail, City, Address)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+        (CompanyName, CompanyDescription, Industry, Website, LogoUrl, ContactEmail, City, TaxCode, CreatedBy, BusinessLicenseUrl)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `;
     const values = [
         company.CompanyName,
@@ -16,9 +23,12 @@ export const CreateCompany = async (company: ICreateCompany): Promise<number> =>
         company.LogoUrl ?? null,
         company.ContactEmail ?? null,
         company.City,
-        company.Address
+        company.TaxCode,
+        company.CreatedBy,
+        company.BusinessLicenseUrl
+        
     ];
-    const [result]: any = await pool.query(query, values);
+    const [result]: any = await connection.query(query, values);
     return result.insertId;
     
 };
@@ -42,11 +52,10 @@ export const UpdateCompany = async (CompanyID: number, CompanyData: IUpdateCompa
     if (result.affectedRows === 0) {
         throw new AppError("Công ty không tồn tại", 404);
     }
-
     return result;
 }
 export const UpdateCompanyStatus = async (CompanyID: number) => {
-    const query = `UPDATE companies SET IsActive = ? WHERE CompanyID = ?`
+    const query = `UPDATE companies SET Status = ? WHERE CompanyID = ?`
     const values = [false, CompanyID];
 
     const [result]: any = await pool.query(query, values);
@@ -61,7 +70,7 @@ export const GetCompanyDetail = async (Role: string, CompanyID: number) => {
     const values: any = [CompanyID];
 
     if (Role !== "Admin") {
-        query += ' AND IsActive = ?';
+        query += ' AND Status = ?';
         values.push(true);
     }
 
@@ -79,7 +88,7 @@ export const GetAllCompany = async (Role: string) => {
 
     const values = [];    
     if (Role !== "Admin") {
-        query += ' WHERE IsActive = true';
+        query += ' WHERE Status = true';
         values.push(1);
     }
     const [result]: any = await pool.query(query, values);
@@ -93,3 +102,52 @@ export const CheckCompanyId = async (CompanyID: number): Promise<Boolean> => {
     const [result]: any = await pool.query(query, values);
     return result.length > 0;        
 }
+export const checkTaxCodeCompany = async (TaxCode: string): Promise<Boolean> => {
+    const query = `SELECT TaxCode FROM Companies WHERE TaxCode = ?`;
+
+    const [result]: any = await pool.query(query, [TaxCode]);
+    return result.length > 0;  
+}
+export const handleCompanyUploads = async (files: Express.Multer.File[]) => {
+    const data: {
+        LogoUrl?: string;
+        BusinessLicenseUrl?: string;
+    } = {};
+
+    const publicIds: string[] = [];
+
+    const logoFile = files.find(f => f.fieldname === "LogoUrl");
+    const licenseFile = files.find(f => f.fieldname === "BusinessLicenseUrl");
+
+    const uploadPromises: Promise<void>[] = [];
+
+    if (logoFile) {
+        uploadPromises.push(
+            uploadToCloudinary("Company", logoFile).then(result => {
+                data.LogoUrl = result.url;
+                publicIds.push(result.publicId);
+            })
+        );
+    }
+    if (licenseFile) {
+        uploadPromises.push(
+            uploadToCloudinary("Company", licenseFile).then(result => {
+                data.BusinessLicenseUrl = result.url;
+                publicIds.push(result.publicId);
+            })
+        );
+    }
+    await Promise.all(uploadPromises);
+
+    return {
+        data,
+        publicIds
+    };
+};
+export const cleanupCloudinary = async (publicIds: string[]) => {
+    await Promise.all(
+        publicIds.map(id =>
+            cloudinary.uploader.destroy(id)
+        )
+    );
+};

@@ -7,8 +7,8 @@ import { authMiddleware, isAdmin, isEmployer } from "../middleware/auth";
 import { optionalAuth } from "../middleware/optionalAuth";
 const router = Router();
 
-router.post('/', authMiddleware, isEmployer, uploadCompany.single('LogoUrl'), companyMiddleware.CreateCompanyValidation, validateRequest, companyController.CreateCompany);
-router.put('/:CompanyID', authMiddleware, isEmployer, uploadCompany.single('LogoUrl'), companyMiddleware.UpdateCompanyValidation, validateRequest, companyController.UpdateCompany);
+router.post('/', authMiddleware, isEmployer, uploadCompany.any(), companyMiddleware.CreateCompanyValidation, validateRequest, companyController.CreateCompany);
+router.put('/:CompanyID', authMiddleware, isEmployer, uploadCompany.any(), companyMiddleware.UpdateCompanyValidation, validateRequest, companyController.UpdateCompany);
 router.put('/status/:CompanyID', authMiddleware, isAdmin, companyMiddleware.UpdateCompanyStatusValidation, validateRequest, companyController.UpdateCompanyStatus);
 router.get('/:CompanyID', optionalAuth, companyMiddleware.CompanyIdValidation, validateRequest, companyController.GetCompanyDetail);
 router.get('/', optionalAuth, companyController.GetAllCompany);
