@@ -6,6 +6,12 @@ import { uploadToCloudinary } from "../utils/uploadToCloudinary";
 import cloudinary from "../config/cloudinary";
 
 export const CreateCompany = async (connection: PoolConnection, company: ICreateCompany): Promise<number> => {
+
+    const userAlreadyHasCompany =await checkUserCreatedCompany(connection, company.CreatedBy);
+    if (userAlreadyHasCompany) {
+        throw new AppError("Bạn đã tạo công ty rồi", 409);
+    }
+
     const isExistTaxCode = await checkTaxCodeCompany(company.TaxCode);
     if (isExistTaxCode) {
         throw new AppError("Mã số thuế đã tồn tại", 409);
@@ -54,9 +60,9 @@ export const UpdateCompany = async (CompanyID: number, CompanyData: IUpdateCompa
     }
     return result;
 }
-export const UpdateCompanyStatus = async (CompanyID: number) => {
+export const UpdateCompanyStatus = async (CompanyID: number, status: string) => {
     const query = `UPDATE companies SET Status = ? WHERE CompanyID = ?`
-    const values = [false, CompanyID];
+    const values = [status, CompanyID];
 
     const [result]: any = await pool.query(query, values);
 
@@ -95,6 +101,22 @@ export const GetAllCompany = async (Role: string) => {
     
     return Role === "Admin" ? result as ICompanyDetailResponse[] : result as ICompanyResponse[];
 }
+export const getCompanyIdOfMe = async (userID: number): Promise<number | null> => {
+    const sql = `
+        SELECT CompanyID
+        FROM employers
+        WHERE EmployerID = ?
+        LIMIT 1
+    `;
+
+    const [rows]: any = await pool.query(sql, [userID]);
+
+    if (rows.length === 0) {
+        return null;
+    }
+
+    return rows[0].CompanyID;
+};
 export const CheckCompanyId = async (CompanyID: number): Promise<Boolean> => {
     const query = `SELECT CompanyID FROM Companies WHERE CompanyID = ?`;
 
@@ -108,6 +130,19 @@ export const checkTaxCodeCompany = async (TaxCode: string): Promise<Boolean> => 
     const [result]: any = await pool.query(query, [TaxCode]);
     return result.length > 0;  
 }
+export const checkUserCreatedCompany = async (connection: PoolConnection, userId: number): Promise<boolean> => {
+
+    const query = `
+        SELECT CompanyID
+        FROM companies
+        WHERE CreatedBy = ?
+        LIMIT 1
+    `;
+
+    const [rows]: any = await connection.query(query, [userId]);
+
+    return rows.length > 0;
+};
 export const handleCompanyUploads = async (files: Express.Multer.File[]) => {
     const data: {
         LogoUrl?: string;

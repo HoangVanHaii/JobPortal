@@ -1,6 +1,12 @@
-import { body, param } from "express-validator";
+import { body, param, query } from "express-validator";
 
-
+export const RequestCompanyValidation = [
+    param('CompanyID')
+        .isInt({min: 1}).withMessage("CompanyID phải là số nguyên"),
+    body("Position")
+        .trim()
+        .notEmpty().withMessage('Vị trí không đưdợc để trống'),
+]
 export const CreateCompanyValidation = [
     body("CompanyName")
         .trim()
@@ -30,6 +36,9 @@ export const CreateCompanyValidation = [
             }
             return true;
         }),
+    body("Position")
+        .trim()
+        .notEmpty().withMessage('Vị trí không được để trống'),
         
 ]
 export const CompanyIdValidation = [
@@ -39,11 +48,12 @@ export const CompanyIdValidation = [
 ]
 export const UpdateCompanyStatusValidation = [
     ...CompanyIdValidation,
-    body('IsActive')
+    query("status")
         .exists()
-        .withMessage("Trạng thái IsActive là bắt buộc")
-        .isBoolean()
-        .withMessage("IsActive phải là kiểu dữ liệu true hoặc false")
+        .withMessage("status là bắt buộc")
+        .bail()
+        .isIn(["Pending", "Approved", "Rejected", "Banned"])
+        .withMessage("giá trị status không hợp lệ"),
 ]
 
 export const UpdateCompanyValidation = [
