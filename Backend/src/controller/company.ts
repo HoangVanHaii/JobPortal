@@ -5,6 +5,9 @@ import { uploadToCloudinary } from '../utils/uploadToCloudinary';
 import { createEmployer } from '../service/employer';
 import { Employer } from '../interface/employer';
 import pool from "../config/database";
+import { AppError } from '../utils/appError';
+import { pid } from 'process';
+import { body } from 'express-validator';
 
 
 export const CreateCompany = async (req: Request, res: Response, next: NextFunction) => {
@@ -24,7 +27,7 @@ export const CreateCompany = async (req: Request, res: Response, next: NextFunct
     
         companyData.CreatedBy = req.user!.id;
         const CompanyID = await CompanyService.CreateCompany(connection, companyData);
-        const EmployerID = await createEmployer(connection, { EmployerID: req.user!.id, CompanyID: CompanyID, Position: position } as Employer);
+        const EmployerID = await createEmployer(connection, { EmployerID: req.user!.id, CompanyID: CompanyID, Position: position, ApprovalStatus: "Approved" } as Employer);
 
         await connection.commit();
         return res.status(201).json({
@@ -66,8 +69,12 @@ export const UpdateCompany = async (req: Request, res: Response, next: NextFunct
 export const UpdateCompanyStatus = async (req: Request, res: Response, next: NextFunction) => {
     try {
         const CompanyId: number = Number(req.params.CompanyID);
-        
-        await CompanyService.UpdateCompanyStatus(CompanyId);
+        const { status } = req.query;
+
+        if (!status) {
+            throw new AppError("Thiếu trạng thái", 400);
+        }
+        await CompanyService.UpdateCompanyStatus(CompanyId, status.toString());
 
         return res.status(200).json({
             success: true,
@@ -78,23 +85,65 @@ export const UpdateCompanyStatus = async (req: Request, res: Response, next: Nex
         next(error);
     }
 }
+export const RequestCompany = async (req: Request, res: Response, next: NextFunction) => {
+    const connection = await pool.getConnection();
+    try {
+        const CompanyID: number = Number(req.params.CompanyID);
+        const Position: string = req.body.Position;
+        const employer: Employer = { EmployerID: req.user!.id, CompanyID, Position, ApprovalStatus: "Pending" };
+        const companyExist = await CompanyService.CheckCompanyId(employer.CompanyID);
+        if (!companyExist) {
+            throw new AppError("Công ty không tồn tại", 404);
+        }
+        const EmployerID = await createEmployer(connection, employer)
+        return res.status(201).json({
+            success: true,
+            message: "Gửi yêu cầu vào công ty thành công",
+            EmployerID
+        })
+    } catch (error) {
+        next(error);
+    }
+    finally {
+        connection.release();
+    }
+}
 export const GetCompanyDetail = async (req: Request, res: Response, next: NextFunction) => {
     try {
         const CompanyId: number = Number(req.params.CompanyID);
         const role = req.user?.role || "Candidate";
-        console.log(role);
         const company = await CompanyService.GetCompanyDetail(role, CompanyId);
 
         return res.status(200).json({
             success: true,
             message: "Lấy thông tin công ty thành công",
-            data: company
+            company
         });
 
     } catch (error) {
         next(error);
     }
 }
+export const GetCompanyDetailOfMe = async (req: Request, res: Response, next: NextFunction) => {
+    try {
+        const CompanyId = await CompanyService.getCompanyIdOfMe(req.user!.id);
+        if (CompanyId === null) {
+            throw new AppError("Bạn không thuộc công ty nào", 401);
+        }
+        const role = req.user?.role || "Candidate";
+        const company = await CompanyService.GetCompanyDetail(role, CompanyId);
+
+        return res.status(200).json({
+            success: true,
+            message: "Lấy thông tin công ty của bạn thành công",
+            company
+        });
+
+    } catch (error) {
+        next(error);
+    }
+}
+
 export const GetAllCompany = async (req: Request, res: Response, next: NextFunction) => {
     try {
         const role = req.user?.role || "Candidate";

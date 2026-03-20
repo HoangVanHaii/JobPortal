@@ -1,5 +1,6 @@
 export interface Employer {
-    EmployerID?: number;
+    EmployerID: number;
     CompanyID: number;
     Position: string;
+    ApprovalStatus: string;
 }
