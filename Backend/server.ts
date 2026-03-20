@@ -7,6 +7,9 @@ import { connectDatabase } from './src/config/database';
 import { errorHandler } from './src/middleware/errorHandler';
 import userRouter from './src/router/user';
 import adminRouter from './src/router/admin/user';
+import skillRouter from './src/router/skill';
+import candidateRouter from './src/router/candidate';
+
 dotenv.config();
 
 const app = express();
@@ -22,6 +25,8 @@ app.get('/', (req: Request, res: Response) => {
 });
 app.use('/api/users', userRouter);
 app.use('/api/admin', adminRouter);
+app.use('/api/skills', skillRouter); 
+app.use('/api/candidates', candidateRouter);
 app.use(errorHandler);
 connectDatabase();
 
