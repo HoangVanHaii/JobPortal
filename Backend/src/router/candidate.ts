@@ -1,0 +1,14 @@
+import express from 'express';
+import * as candidateController from '../controller/candidate';
+const router = express.Router();
+import { authMiddleware, isAdmin, isEmployer } from "../middleware/auth";
+import { uploadCompany } from "../utils/uploadCompany";
+import * as candidateMiddleware from '../middleware/candidate';
+import { validateRequest } from '../middleware/validateRequest';
+
+router.get('/profile', authMiddleware, candidateController.getProfile); 
+router.post('/profile', authMiddleware, uploadCompany.single('AvatarUrl'),candidateMiddleware.upsertProfileValidation,validateRequest, candidateController.upsertProfile);
+router.get('/skills', authMiddleware, candidateController.getSkills);
+router.post('/skills/analyze-text', authMiddleware,candidateMiddleware.analyzeSkillsTextValidation,validateRequest, candidateController.analyzeSkillsText);
+router.post('/skills', authMiddleware,candidateMiddleware.saveAnalyzedSkillsValidation,validateRequest, candidateController.saveAnalyzedSkills);
+export default router;
