@@ -12,6 +12,7 @@ import http from 'http'
 import { Server } from 'socket.io';
 import { setupSocket } from './src/socket';
 import messageRouter from './src/router/message'
+import savedJobRouter from './src/router/savedJob'
 dotenv.config();
 
 const app = express();
@@ -33,6 +34,7 @@ app.use("/api/jobs", jobRouter);
 app.use('/api/users', userRouter);
 app.use('/api/admin', adminRouter);
 app.use('/api/messages', messageRouter)
+app.use('/api/saved-job');
 app.use(errorHandler);
 connectDatabase();
 

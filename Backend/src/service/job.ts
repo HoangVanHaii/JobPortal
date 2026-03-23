@@ -2,7 +2,6 @@ import { PoolConnection } from "mysql2/promise";
 import pool from "../config/database";
 import { IJobPayload, IJob, IJobFilters, IJobDetailPayload, IJobDetail, IInterviewRound } from "../interface/job";
 import { JobDetailModel } from "../model/job";
-import redisClient from "../config/redisClient";
 
 export const insertJobToMySQL = async (pool: PoolConnection, job: IJobPayload) => {
     const jobQuery = "INSERT INTO jobs (EmployerID, CategoryID, Title, Quantity, SalaryMin, SalaryMax, Location, JobType, ExperienceRequired, ExpiredDate) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
@@ -40,7 +39,7 @@ export const createJob = async (job: IJobPayload, jobDetail: IJobDetailPayload) 
         throw error;
     }
 }
-const mergeJob = async(jobIds: number[], rows: any) => {
+export const mergeJob = async(jobIds: number[], rows: any) => {
     const mongoDetails = await JobDetailModel.find({
         mysqlJobID: { $in: jobIds }
     }).select('mysqlJobID description').lean();
