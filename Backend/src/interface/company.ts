@@ -1,22 +1,25 @@
 export interface ICreateCompany{
     CompanyName: string;
     CompanyDescription?: string;
+    TaxCode: string;
     Industry: string;
     Website?: string;
     LogoUrl?: string;
     ContactEmail?: string;
     City?: string;
-    Address?: string;
+    CreatedBy: number;
+    BusinessLicenseUrl: string;
 }
 export interface IUpdateCompany{
     CompanyName?: string;
     CompanyDescription?: string;
+    TaxCode: string;
     Industry?: string;
     Website?: string;
     LogoUrl?: string;
     ContactEmail?: string;
-    Address?: string;
     City?: string;
+    BusinessLicenseUrl?: string;
 }
 export interface ICompanyResponse{
     CompanyID: number;
@@ -32,10 +35,11 @@ export interface ICompanyDetailResponse {
     Industry: string;
     Website?: string;
     LogoUrl?: string;
+    TaxCode: string;
+    BusinessLicenseUrl: string;
     ContactEmail?: string;
-    Address?: string;
     City?: string;
-    IsActive: boolean;
+    Status: boolean;
     CreatedAt: Date;
     UpdatedAt: Date;
 }

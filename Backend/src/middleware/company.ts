@@ -1,10 +1,19 @@
-import { body, param } from "express-validator";
+import { body, param, query } from "express-validator";
 
-
+export const RequestCompanyValidation = [
+    param('CompanyID')
+        .isInt({min: 1}).withMessage("CompanyID phải là số nguyên"),
+    body("Position")
+        .trim()
+        .notEmpty().withMessage('Vị trí không đưdợc để trống'),
+]
 export const CreateCompanyValidation = [
     body("CompanyName")
         .trim()
         .notEmpty().withMessage('Tên công ty không được để trống'),
+    body("TaxCode")
+        .trim()
+        .matches(/^\d{10}$/).withMessage("TaxCode phải 10 chữ số"),
     body('Industry')
         .notEmpty().withMessage('Ngành nghề là bắt buộc'),
     body('CompanyDescription')
@@ -19,13 +28,18 @@ export const CreateCompanyValidation = [
         .isEmail().withMessage('Email không đúng định dạng'),
     body('City')
         .trim()
-        .optional({ checkFalsy: true })
         .notEmpty().withMessage('Thành phố không được để trống'),
-
-    body('Address')
+    body('BusinessLicenseUrl')
+        .custom((value, { req }) => {
+            if (!req.files || !(req.files as any).find((f: any) => f.fieldname === 'BusinessLicenseUrl')) {
+                throw new Error('Vui lòng upload ảnh Giấy phép kinh doanh');
+            }
+            return true;
+        }),
+    body("Position")
         .trim()
-        .optional({ checkFalsy: true })
-        .notEmpty().withMessage('Địa chỉ cụ thể không được để trống'),
+        .notEmpty().withMessage('Vị trí không được để trống'),
+        
 ]
 export const CompanyIdValidation = [
     param('CompanyID')
@@ -34,11 +48,12 @@ export const CompanyIdValidation = [
 ]
 export const UpdateCompanyStatusValidation = [
     ...CompanyIdValidation,
-    body('IsActive')
+    query("status")
         .exists()
-        .withMessage("Trạng thái IsActive là bắt buộc")
-        .isBoolean()
-        .withMessage("IsActive phải là kiểu dữ liệu true hoặc false")
+        .withMessage("status là bắt buộc")
+        .bail()
+        .isIn(["Pending", "Approved", "Rejected", "Banned"])
+        .withMessage("giá trị status không hợp lệ"),
 ]
 
 export const UpdateCompanyValidation = [
@@ -51,7 +66,10 @@ export const UpdateCompanyValidation = [
     body('CompanyDescription')
         .optional()
         .trim(),
-
+    body("TaxCode")
+        .optional()
+        .trim()
+        .matches(/^\d{10}$/).withMessage("TaxCode phải 10 chữ số"),
     body('Industry')
         .optional()
         .trim()
@@ -71,8 +89,4 @@ export const UpdateCompanyValidation = [
         .optional()
         .trim()
         .notEmpty().withMessage("Thành phố không được để trống"),
-
-    body('Address')
-        .optional()
-        .trim(),
 ]

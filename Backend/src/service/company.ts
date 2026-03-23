@@ -1,12 +1,25 @@
-import { ResultSetHeader } from "mysql2/promise";
+import { PoolConnection } from "mysql2/promise";
 import pool from "../config/database";
 import { ICompanyDetailResponse, ICompanyResponse, ICreateCompany, IUpdateCompany } from "../interface/company";
+import { AppError } from "../utils/appError";
+import { uploadToCloudinary } from "../utils/uploadToCloudinary";
+import cloudinary from "../config/cloudinary";
 
-export const CreateCompany = async (company: ICreateCompany): Promise<number> => {
+export const CreateCompany = async (connection: PoolConnection, company: ICreateCompany): Promise<number> => {
+
+    const userAlreadyHasCompany =await checkUserCreatedCompany(connection, company.CreatedBy);
+    if (userAlreadyHasCompany) {
+        throw new AppError("Bạn đã tạo công ty rồi", 409);
+    }
+
+    const isExistTaxCode = await checkTaxCodeCompany(company.TaxCode);
+    if (isExistTaxCode) {
+        throw new AppError("Mã số thuế đã tồn tại", 409);
+    }
     const query = `
         INSERT INTO companies 
-        (CompanyName, CompanyDescription, Industry, Website, LogoUrl, ContactEmail, City, Address)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+        (CompanyName, CompanyDescription, Industry, Website, LogoUrl, ContactEmail, City, TaxCode, CreatedBy, BusinessLicenseUrl)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `;
     const values = [
         company.CompanyName,
@@ -15,110 +28,161 @@ export const CreateCompany = async (company: ICreateCompany): Promise<number> =>
         company.Website ?? null,
         company.LogoUrl ?? null,
         company.ContactEmail ?? null,
-        company.City ?? null,
-        company.Address ?? null
+        company.City,
+        company.TaxCode,
+        company.CreatedBy,
+        company.BusinessLicenseUrl
+        
     ];
-    try {
-        const [result]: any = await pool.query(query, values);
-        return result.insertId;
-
-    } catch (error: any) {
-        throw error;
-    }
+    const [result]: any = await connection.query(query, values);
+    return result.insertId;
+    
 };
 
 export const UpdateCompany = async (CompanyID: number, CompanyData: IUpdateCompany) => {
-    try {
-        const fields: string[] = [];
-        const values: any[] = [];
+    const fields: string[] = [];
+    const values: any[] = [];
 
-        Object.entries(CompanyData).forEach(([key, value]) => {
-            if (value !== undefined && value !== null && value !== "") {
-                fields.push(`${key} = ?`);
-                values.push(value);
-            }
-        })
-        if (fields.length === 0) throw new Error("Không có gì để cập nhật");
-
-        const query = `UPDATE Companies SET ${fields.join(", ")} WHERE CompanyID = ?`
-        values.push(CompanyID);
-
-        const [result]: any = await pool.query(query, values);
-        if (result.affectedRows === 0) {
-            throw new Error("Công ty không tồn tại");
+    Object.entries(CompanyData).forEach(([key, value]) => {
+        if (value !== undefined && value !== null && value !== "") {
+            fields.push(`${key} = ?`);
+            values.push(value);
         }
+    })
+    if (fields.length === 0) throw new AppError("Không có gì để cập nhật", 400);
 
-        return result;
-    } catch (error) {
-        throw error;
+    const query = `UPDATE Companies SET ${fields.join(", ")} WHERE CompanyID = ?`
+    values.push(CompanyID);
+
+    const [result]: any = await pool.query(query, values);
+    if (result.affectedRows === 0) {
+        throw new AppError("Công ty không tồn tại", 404);
     }
+    return result;
 }
-export const UpdateCompanyStatus = async (CompanyID: number) => {
-    try {
-        const query = `UPDATE companies SET IsActive = ? WHERE CompanyID = ?`
-        const values = [false, CompanyID];
+export const UpdateCompanyStatus = async (CompanyID: number, status: string) => {
+    const query = `UPDATE companies SET Status = ? WHERE CompanyID = ?`
+    const values = [status, CompanyID];
 
-        const [result]: any = await pool.query(query, values);
+    const [result]: any = await pool.query(query, values);
 
-        if (result.affectedRows === 0) {
-            throw new Error("Công ty không tồn tại hoăc đã bị xóa");
-        }
-        return true;
-        
-    } catch (error) {
-        throw error;
+    if (result.affectedRows === 0) {
+        throw new AppError("Công ty không tồn tại hoăc đã bị xóa", 404);
     }
+    return true;
 }
 export const GetCompanyDetail = async (Role: string, CompanyID: number) => {
-    try {
-        let query = `SELECT * FROM companies WHERE CompanyID = ?`;
-        const values: any = [CompanyID];
+    let query = `SELECT * FROM companies WHERE CompanyID = ?`;
+    const values: any = [CompanyID];
 
-        if (Role !== "Admin") {
-            query += ' AND IsActive = ?';
-            values.push(true);
-        }
-
-        const [result]: any = await pool.query(query, values);
-
-        if (!result || result.length === 0) {
-            throw new Error("Công ty không tồn tại hoặc bạn không có quyền xem");
-        }
-
-        return result[0] as ICompanyDetailResponse;
-        
-    } catch (error) {
-        throw error;
+    if (Role !== "Admin") {
+        query += ' AND Status = ?';
+        values.push(true);
     }
+
+    const [result]: any = await pool.query(query, values);
+
+    if (!result || result.length === 0) {
+        throw new AppError("Công ty không tồn tại hoặc bạn không có quyền xem", 404);
+    }
+    return result[0] as ICompanyDetailResponse;
 
 }
 export const GetAllCompany = async (Role: string) => {
-    try {
-        const fields = Role === "Admin" ? '*' : 'CompanyID, CompanyName, Industry, City, LogoUrl';
-        let query = `SELECT ${fields} FROM Companies`
+    const fields = Role === "Admin" ? '*' : 'CompanyID, CompanyName, Industry, City, LogoUrl';
+    let query = `SELECT ${fields} FROM Companies`
 
-        const values = [];    
-        if (Role !== "Admin") {
-            query += ' WHERE IsActive = true';
-            values.push(1);
-        }
-        const [result]: any = await pool.query(query, values);
-        
-        return Role === "Admin" ? result as ICompanyDetailResponse[] : result as ICompanyResponse[];
-        
-    } catch (error) {
-        throw error;
+    const values = [];    
+    if (Role !== "Admin") {
+        query += ' WHERE Status = true';
+        values.push(1);
     }
+    const [result]: any = await pool.query(query, values);
+    
+    return Role === "Admin" ? result as ICompanyDetailResponse[] : result as ICompanyResponse[];
 }
+export const getCompanyIdOfMe = async (userID: number): Promise<number | null> => {
+    const sql = `
+        SELECT CompanyID
+        FROM employers
+        WHERE EmployerID = ?
+        LIMIT 1
+    `;
+
+    const [rows]: any = await pool.query(sql, [userID]);
+
+    if (rows.length === 0) {
+        return null;
+    }
+
+    return rows[0].CompanyID;
+};
 export const CheckCompanyId = async (CompanyID: number): Promise<Boolean> => {
-    try {
-        const query = `SELECT CompanyID FROM Companies WHERE CompanyID = ?`;
+    const query = `SELECT CompanyID FROM Companies WHERE CompanyID = ?`;
 
-        const values = [ CompanyID ];
-        const [result]: any = await pool.query(query, values);
-        return result.length > 0;        
-
-    } catch (error) {
-        throw error;
-    }
+    const values = [ CompanyID ];
+    const [result]: any = await pool.query(query, values);
+    return result.length > 0;        
 }
+export const checkTaxCodeCompany = async (TaxCode: string): Promise<Boolean> => {
+    const query = `SELECT TaxCode FROM Companies WHERE TaxCode = ?`;
+
+    const [result]: any = await pool.query(query, [TaxCode]);
+    return result.length > 0;  
+}
+export const checkUserCreatedCompany = async (connection: PoolConnection, userId: number): Promise<boolean> => {
+
+    const query = `
+        SELECT CompanyID
+        FROM companies
+        WHERE CreatedBy = ?
+        LIMIT 1
+    `;
+
+    const [rows]: any = await connection.query(query, [userId]);
+
+    return rows.length > 0;
+};
+export const handleCompanyUploads = async (files: Express.Multer.File[]) => {
+    const data: {
+        LogoUrl?: string;
+        BusinessLicenseUrl?: string;
+    } = {};
+
+    const publicIds: string[] = [];
+
+    const logoFile = files.find(f => f.fieldname === "LogoUrl");
+    const licenseFile = files.find(f => f.fieldname === "BusinessLicenseUrl");
+
+    const uploadPromises: Promise<void>[] = [];
+
+    if (logoFile) {
+        uploadPromises.push(
+            uploadToCloudinary("Company", logoFile).then(result => {
+                data.LogoUrl = result.url;
+                publicIds.push(result.publicId);
+            })
+        );
+    }
+    if (licenseFile) {
+        uploadPromises.push(
+            uploadToCloudinary("Company", licenseFile).then(result => {
+                data.BusinessLicenseUrl = result.url;
+                publicIds.push(result.publicId);
+            })
+        );
+    }
+    await Promise.all(uploadPromises);
+
+    return {
+        data,
+        publicIds
+    };
+};
+export const cleanupCloudinary = async (publicIds: string[]) => {
+    await Promise.all(
+        publicIds.map(id =>
+            cloudinary.uploader.destroy(id)
+        )
+    );
+};
