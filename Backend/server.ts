@@ -28,13 +28,13 @@ setupSocket(io);
 app.use(cors());
 app.use(express.json());
 
-// app.use("/api/employer/company", companyRouter);
+app.use("/api/employer/company", companyRouter);
 app.use("/api/employers", employerRouter);
 app.use("/api/jobs", jobRouter);
 app.use('/api/users', userRouter);
 app.use('/api/admin', adminRouter);
 app.use('/api/messages', messageRouter)
-app.use('/api/saved-job');
+app.use('/api/saved-job', savedJobRouter);
 app.use(errorHandler);
 connectDatabase();
 
