@@ -1,6 +1,6 @@
 import pool from "../config/database";
 import { Candidate } from "../interface/candidate";
-import { GoogleGenerativeAI } from "@google/generative-ai";
+import { GoogleGenAI } from "@google/genai"; 
 import * as skillService from "./skill";
 
 export const upsertCandidateProfile = async (data: Candidate) => {
@@ -53,12 +53,9 @@ export const getCandidateSkills = async (userId: number) => {
 };
 
 
-const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY as string);
-export const analyzeTextWithAI = async (rawText: string) => {
-    const allSkills = await skillService.getAllSkills(); 
-    const dictionary = allSkills.map((s: any) => ({ id: s.SkillID, name: s.SkillName }));
-
-    const prompt = `
+const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY as string });
+const buildSkillAnalysisPrompt = (rawText: string, dictionary: any[]) => {
+    return `
         Bạn là một Trưởng phòng Nhân sự cấp cao đa ngành nghề. Dưới đây là đoạn văn bản ứng viên mô tả kỹ năng của họ:
         "${rawText}"
         
@@ -78,22 +75,21 @@ export const analyzeTextWithAI = async (rawText: string) => {
             { "id": "new", "name": "Livestream TikTok" }
         ]
     `;
+};
 
-    const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" }); 
-    const result = await model.generateContent(prompt);
-    let responseText = result.response.text();
-
-    responseText = responseText.replace(/```json/g, "").replace(/```/g, "").trim();
+const parseAIResponse = (responseText: string) => {
+    const cleanedText = responseText.replace(/```json/g, "").replace(/```/g, "").trim();
     
-    let parsedResults: any[] = [];
     try {
-        parsedResults = JSON.parse(responseText);
+        return JSON.parse(cleanedText);
     } catch (e) {
-        console.error("Lỗi AI:", responseText);
+        console.error("Lỗi AI Parse JSON:", cleanedText);
         throw new Error("AI_PARSE_ERROR"); 
     }
+};
 
-    const finalSkills = parsedResults.map((item: any) => {
+const mapFinalSkills = (parsedResults: any[], allSkills: any[]) => {
+    return parsedResults.map((item: any) => {
         if (item.id === "new") {
             return {
                 isNew: true, 
@@ -109,38 +105,90 @@ export const analyzeTextWithAI = async (rawText: string) => {
             };
         }
     });
+};
+
+export const analyzeTextWithAI = async (rawText: string) => {
+    const allSkills = await skillService.getAllSkills(); 
+    const dictionary = allSkills.map((s: any) => ({ id: s.SkillID, name: s.SkillName }));
+    const prompt = buildSkillAnalysisPrompt(rawText, dictionary);
+    const result = await ai.models.generateContent({
+        model: "gemini-2.5-flash",
+        contents: prompt
+    });
+    const parsedResults = parseAIResponse(result.text || "");
+    return mapFinalSkills(parsedResults, allSkills);
+};
+
+const ensureSkillsExist = async (connection: any, skillsToSave: any[]) => {
+    const finalSkillIdsToSave = [];
     
-    return finalSkills;
+    for (const skill of skillsToSave) {
+        let currentSkillId = skill.skillId;
+
+        if (skill.isNew === true || !currentSkillId) {
+            const cleanName = skill.skillName.trim();
+            const [existing]: any = await connection.query(
+                `SELECT SkillID FROM Skills WHERE SkillName = ?`, [cleanName]
+            );
+
+            if (existing.length > 0) {
+                currentSkillId = existing[0].SkillID;
+            } else {
+                const [insertResult]: any = await connection.query(
+                    `INSERT INTO Skills (SkillName) VALUES (?)`, [cleanName]
+                );
+                currentSkillId = insertResult.insertId;
+            }
+        }
+
+        if (currentSkillId) {
+            finalSkillIdsToSave.push({
+                id: currentSkillId,
+                level: skill.level || 'Intermediate'
+            });
+        }
+    }
+    return finalSkillIdsToSave;
+};
+
+const syncCandidateSkills = async (connection: any, userId: number, finalSkillIdsToSave: any[]) => {
+    const [rows]: any = await connection.query(
+        `SELECT SkillID FROM CandidateSkills WHERE CandidateID = ?`, [userId]
+    );
+    const currentSkillIds = rows.map((r: any) => r.SkillID); 
+    const wantedSkillIds = finalSkillIdsToSave.map(s => s.id); 
+
+    const idsToRemove = currentSkillIds.filter((id: number) => !wantedSkillIds.includes(id)); 
+    const itemsToAdd = finalSkillIdsToSave.filter(s => !currentSkillIds.includes(s.id)); 
+
+    if (idsToRemove.length > 0) {
+        await connection.query(
+            `DELETE FROM CandidateSkills WHERE CandidateID = ? AND SkillID IN (?)`,
+            [userId, idsToRemove]
+        );
+    }
+
+    if (itemsToAdd.length > 0) {
+        const valuesToInsert = itemsToAdd.map(item => [userId, item.id, item.level]);
+        await connection.query(
+            `INSERT INTO CandidateSkills (CandidateID, SkillID, SkillLevel) VALUES ?`,
+            [valuesToInsert]
+        );
+    }
 };
 
 export const updateCandidateSkills = async (userId: number, skillsToSave: any[]) => {
     const connection = await pool.getConnection();
     try {
         await connection.beginTransaction();
-        await connection.query(`DELETE FROM CandidateSkills WHERE CandidateID = ?`, [userId]); //xóa skill cũ
-
-        for (const skill of skillsToSave) {
-            let currentSkillId = skill.skillId;
-            if (skill.isNew === true) {
-                const [insertResult]: any = await connection.query(
-                    `INSERT INTO Skills (SkillName) VALUES (?)`, 
-                    [skill.skillName.trim()] 
-                );
-                currentSkillId = insertResult.insertId; 
-            }
-
-            await connection.query(
-                `INSERT INTO CandidateSkills (CandidateID, SkillID, SkillLevel) VALUES (?, ?, ?)`,
-                [userId, currentSkillId, skill.level || 'Intermediate'] 
-            );
-        }
+        const finalSkills = await ensureSkillsExist(connection, skillsToSave);
+        await syncCandidateSkills(connection, userId, finalSkills);
 
         await connection.commit();
     } catch (error) {
         await connection.rollback();
-        // throw error;
+        throw error; 
     } finally {
         connection.release();
     }
 };
-

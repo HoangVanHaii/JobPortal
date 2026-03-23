@@ -1,9 +1,20 @@
 import pool from "../config/database"; 
 import { AppError } from '../utils/appError';
+import redisClient from '../config/redisClient'; 
 
 export const getAllSkills = async () => {
+    const cachedSkills = await redisClient.get('all_skills');
+    if (cachedSkills) {
+        return JSON.parse(cachedSkills); 
+    }
+
     const query = `SELECT * FROM Skills ORDER BY SkillName ASC`;
     const [rows]: any = await pool.query(query);
+
+    if (rows.length > 0) {
+        await redisClient.setEx('all_skills', 3600, JSON.stringify(rows));
+    }
+
     return rows;
 };
 
@@ -16,6 +27,10 @@ export const getSkillById = async (skillId: number) => {
 export const deleteSkill = async (skillId: number) => {
     const query = `DELETE FROM Skills WHERE SkillID = ?`;
     const [result]: any = await pool.query(query, [skillId]);
+    
+    if (result.affectedRows > 0) {
+        await redisClient.del('all_skills'); 
+    }
     
     return result.affectedRows > 0;
 };
@@ -33,6 +48,7 @@ export const createSkill = async (skillName: string) => {
     const query = `INSERT INTO Skills (SkillName) VALUES (?)`;
     const [result]: any = await pool.query(query, [cleanName]);
     
+    await redisClient.del('all_skills');
     return { SkillID: result.insertId, SkillName: cleanName };
 };
 
@@ -49,5 +65,9 @@ export const updateSkill = async (skillId: number, newSkillName: string) => {
     const query = `UPDATE Skills SET SkillName = ? WHERE SkillID = ?`;
     const [result]: any = await pool.query(query, [cleanName, skillId]);
     
+    if (result.affectedRows > 0) {
+        await redisClient.del('all_skills'); 
+    }
     return result.affectedRows > 0;
 };
+

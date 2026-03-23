@@ -69,8 +69,6 @@ export const getSkills = async (req: Request, res: Response, next: NextFunction)
 export const analyzeSkillsText = async (req: Request, res: Response, next: NextFunction) => {
     try {
         const { rawText } = req.body; 
-        if (!rawText) throw new AppError("Vui lòng nhập mô tả kỹ năng!", 400);
-
         const finalSkills = await candidateService.analyzeTextWithAI(rawText);
 
         return res.status(200).json({
@@ -92,10 +90,6 @@ export const saveAnalyzedSkills = async (req: Request, res: Response, next: Next
         const userId = req.user!.id; 
         const { skills } = req.body; 
 
-        if (!skills || !Array.isArray(skills)) {
-            throw new AppError("Dữ liệu kỹ năng không hợp lệ!", 400);
-        }
-
         await candidateService.updateCandidateSkills(userId, skills);
 
         return res.status(200).json({
@@ -106,3 +100,4 @@ export const saveAnalyzedSkills = async (req: Request, res: Response, next: Next
         next(error);
     }
 };
+

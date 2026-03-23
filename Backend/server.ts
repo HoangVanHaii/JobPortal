@@ -9,7 +9,7 @@ import userRouter from './src/router/user';
 import adminRouter from './src/router/admin/user';
 import skillRouter from './src/router/skill';
 import candidateRouter from './src/router/candidate';
-
+import resumeRouter from './src/router/resume';
 dotenv.config();
 
 const app = express();
@@ -27,6 +27,7 @@ app.use('/api/users', userRouter);
 app.use('/api/admin', adminRouter);
 app.use('/api/skills', skillRouter); 
 app.use('/api/candidates', candidateRouter);
+app.use('/api/resumes', resumeRouter);
 app.use(errorHandler);
 connectDatabase();
 
