@@ -22,6 +22,11 @@ export const checkEmployerID = async (connection: PoolConnection, EmployerID: Nu
     const [result]: any = await connection.query(query, [EmployerID]);
     return result.length > 0
 }
+export const checkEmployerProfile = async (employerID: number) => {
+    const query = "SELECT * FROM employers WHERE EmployerID = ?";
+    const [rows]: any = await pool.query(query, [employerID]);
+    return rows.length > 0 ? rows[0] as IEmployer : null;
+}
 export const UpdateStatusEmployer = async (EmployerID: number, UserID: number, ApprovalStatus: string) => {
     const query = `
         UPDATE employers e
