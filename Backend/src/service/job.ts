@@ -191,7 +191,6 @@ export const getJobOfMe = async (page: number, limit: number) => {
         FROM jobs j
         JOIN employers e ON j.EmployerID = e.EmployerID
         JOIN companies c ON e.CompanyID = c.CompanyID
-        WHERE j.ExpiredDate > NOW()
         ORDER BY j.CreatedAt DESC LIMIT ? OFFSET ?`;
 
     queryParams.push(limit, offset);

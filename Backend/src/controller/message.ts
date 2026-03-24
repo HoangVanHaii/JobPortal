@@ -5,7 +5,11 @@ export const getConversations = async (req: Request, res: Response, next: NextFu
     try {
         const myId = parseInt(req.user!.id.toString());        
         const conversations = await messageService.getConversations(myId);
-        return res.status(200).json(conversations);
+        return res.status(200).json({
+            success: true,
+            message: "Lấy dữ liệu các hội thoại thành công",
+            data: conversations
+        });
     } catch (error) {
         next(error);
     }
@@ -16,7 +20,11 @@ export const getChatHistory = async (req: Request, res: Response, next: NextFunc
         const otherUserId = parseInt(req.params.otherUserId.toString());
 
         const messages = await messageService.getChatHistory(myId, otherUserId);
-        return res.status(200).json(messages);
+        return res.status(200).json({
+            success: true,
+            message: "Lấy chi tiết cuộc trò chuyện thành công",
+            data: messages
+        });
     } catch (error) {
         next(error);
     }

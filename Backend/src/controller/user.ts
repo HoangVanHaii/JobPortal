@@ -15,7 +15,11 @@ export const requestOtp = async (req: Request, res: Response, next: NextFunction
         }
         const result = await sendEmail(email);
 
-        res.status(200).json(result);
+        res.status(200).json({
+            success: true,
+            message: "Gửi OTP thành công",
+            data: result
+        });
     } catch (error) {
         next(error);
     }
@@ -24,7 +28,11 @@ export const verifyOtp = async (req: Request, res: Response, next: NextFunction)
     try {
         const { email, otp } = req.body;
         const result = await verify(email, otp);
-        return res.status(200).json(result);
+        return res.status(200).json({
+            success: true,
+            message: "Xác thực thành công",
+            data: result
+        });
     } catch (error) {
         next(error);
     }
@@ -39,7 +47,11 @@ export const register = async (req: Request, res: Response, next: NextFunction) 
         const hashedPassword = await bcrypt.hash(password, 10);
         const user = await userService.createUser(email, hashedPassword, role);
         await redisClient.del(`verifyToken:${verifyToken}`);
-        return res.status(201).json({ message: "Tạo tài khoản thành công", userId: user });
+        return res.status(201).json({
+            success: true,
+            message: "Tạo tài khoản thành công",
+            data: user
+        });
 
     } catch (error) {
         next(error);
@@ -60,7 +72,11 @@ export const login = async (req: Request, res: Response, next: NextFunction) => 
         const refreshToken = generateToken(user.UserID, user.Role, 'refreshToken');
 
         redisClient.set(`refreshToken:${refreshToken}`, user.UserID, { EX: 7 * 24 * 60 * 60 });
-        return res.status(200).json({ accessToken, refreshToken });
+        return res.status(200).json({
+            success: true,
+            message: "Đăng nhập thành công",
+            data: { accessToken, refreshToken }
+        });
     } catch (error) {
         next(error);
     }
@@ -80,7 +96,11 @@ export const refreshToken = async (req: Request, res: Response, next: NextFuncti
             throw new AppError('Tài khoản không tồn tại', 404);
         }
         const newAccessToken = generateToken(user.UserID, user.Role, 'accessToken');
-        return res.status(200).json({ accessToken: newAccessToken });
+        return res.status(200).json({
+            success: true,
+            message: "Lấy accessToken thành công",
+            data: newAccessToken
+        });
     } catch (error) {
         next(error);
     }
@@ -92,7 +112,10 @@ export const logout = async (req: Request, res: Response, next: NextFunction) =>
             throw new AppError('Chưa cung cấp refresh token', 400);
         }   
         await redisClient.del(`refreshToken:${refreshToken}`);
-        return res.status(200).json({ message: 'Đăng xuất thành công' });
+        return res.status(200).json({
+            success: true,
+            message: 'Đăng xuất thành công'
+        });
     } catch (error) {
         next(error);
     }   

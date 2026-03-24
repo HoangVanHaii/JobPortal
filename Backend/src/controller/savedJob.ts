@@ -1,6 +1,7 @@
 import { Request, Response, NextFunction } from 'express'
 import *as savedJobService from '../service/savedJob'
 import redisClient from '../config/redisClient';
+import { AppError } from '../utils/appError';
 
 export const savedJob = async (req: Request, res: Response, next: NextFunction) => {
     try {
@@ -8,14 +9,17 @@ export const savedJob = async (req: Request, res: Response, next: NextFunction) 
         const jobId = parseInt(req.params.jobId.toString());
         const isSaved = await savedJobService.isSavedJob(userId, jobId)
         if (isSaved) {
-            return res.status(409).json({ message: "Bạn đã lưu tin này rồi" });
+            throw new AppError('Bạn đã lưu tin này rồi', 409);
         }
         await savedJobService.savedJob(userId, jobId);
         const cacheKeys = await redisClient.keys(`saved_jobs:u${userId}:*`);
         if (cacheKeys.length > 0) {
             await redisClient.unlink(cacheKeys);
         }
-        return res.status(201).json({ message: 'Đã lưu tin thành công' });
+        return res.status(201).json({
+            success: true,
+            message: 'Đã lưu tin thành công'
+        });
     } catch (error) {
         next(error);
     }
@@ -26,14 +30,17 @@ export const removeSavedJob = async (req: Request, res: Response, next: NextFunc
         const jobId = parseInt(req.params.jobId.toString());
         const isSaved = await savedJobService.isSavedJob(userId, jobId)
         if (!isSaved) {
-            return res.status(409).json({ message: "Bạn chưa lưu tin này " });
+            throw new AppError("Bạn chưa lưu tin này ", 400)
         }
         await savedJobService.removeSavedJob(userId, jobId);
         const cacheKeys = await redisClient.keys(`saved_jobs:u${userId}:*`);
         if (cacheKeys.length > 0) {
             await redisClient.unlink(cacheKeys);
         }
-        return res.status(201).json({ message: 'Đã bỏ lưu tin thành công' });
+        return res.status(201).json({
+            success: true,
+            message: 'Đã bỏ lưu tin thành công'
+        });
     } catch (error) {
         next(error);
     }
@@ -48,12 +55,20 @@ export const getMySavedJobsController = async (req: Request, res: Response, next
 
         if (cachedJobs) {
             console.log(`Lấy dữ liệu saved jobs của user ${userId} từ Redis cache`);
-            return res.status(200).json(JSON.parse(cachedJobs));
+            return res.status(200).json({
+                success: true,
+                message: "Lấy dữ liệu công việc đã lưu thành công",
+                data: cachedJobs
+            });
         }
         const jobs = await savedJobService.getSavedJobs(userId, page, limit);
 
         await redisClient.setEx(cacheKey, 300, JSON.stringify(jobs));
-        return res.status(200).json(jobs);
+        return res.status(200).json({
+            success: true,
+            message: "Lấy dữ liệu công việc đã lưu thành công", 
+            data: jobs
+        });
     } catch (error) {
         next(error);
     }
