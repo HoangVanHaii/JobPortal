@@ -1,17 +1,17 @@
 import { PoolConnection } from "mysql2/promise";
-import { Employer } from "../interface/employer";
+import { IEmployer } from "../interface/employer";
 import { AppError } from "../utils/appError";
 import { CheckCompanyId } from "./company";
 import pool from "../config/database";
 
-export const createEmployer = async (connection: PoolConnection, employer: Employer) => {
+export const createEmployer = async (connection: PoolConnection, employer: IEmployer) => {
     
     const employerExist = await checkEmployerID(connection, employer.EmployerID)
     if (employerExist) {
         throw new AppError("Nhân viên đã tồn tại", 409);
     }
 
-    const query = "INSERT INTO employers (EmployerID, CompanyID, Position, ApprovalStatus) VALUES (?, ?, ?, ?)";
+    const query = "INSERT INTO employers (EmployerID, CompanyID, Posit  ion, ApprovalStatus) VALUES (?, ?, ?, ?)";
     const values = [employer.EmployerID, employer.CompanyID, employer.Position, employer.ApprovalStatus];
     await connection.query(query, values);
     return employer.EmployerID;
@@ -59,3 +59,4 @@ export const getPendingEmployers = async (userId: number) => {
 
     return rows;
 };
+

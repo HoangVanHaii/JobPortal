@@ -48,7 +48,7 @@ export const CompanyIdValidation = [
 ]
 export const UpdateCompanyStatusValidation = [
     ...CompanyIdValidation,
-    query("status")
+    body("status")
         .exists()
         .withMessage("status là bắt buộc")
         .bail()
