@@ -1,6 +1,6 @@
 import { Request, Response, NextFunction } from "express";
 import *as employerService from "../service/employer";
-import { Employer } from "../interface/employer";
+import { IEmployer } from "../interface/employer";
 
 export const createEmployer = async (req: Request, res: Response, next: NextFunction) => {  
     try {
@@ -11,3 +11,28 @@ export const createEmployer = async (req: Request, res: Response, next: NextFunc
         next(error);
     }
 }
+export const UpdateStatusEmployer = async (req: Request, res: Response, next: NextFunction) => {
+    try {
+        const EmployerID: number = Number(req.params.EmployerID);
+        const ApprovalStatus = req.body.ApprovalStatus;
+        await employerService.UpdateStatusEmployer(EmployerID, req.user!.id, ApprovalStatus);
+        return res.status(200).json({
+            success: true,
+            message: "Cập nhật trạng thái nhân viên thành công"
+        })
+    } catch (error) {
+        next(error);
+    }
+}
+export const GetPendingEmployers = async (req: Request, res: Response, next: NextFunction) => {
+    try {
+        const data = await employerService.getPendingEmployers(req.user!.id);
+        res.json({
+            success: true,
+            message: "Lấy danh sách yêu cầu nhân viên thành công",
+            data
+        });
+    } catch (error) {
+        next(error);
+    }
+};

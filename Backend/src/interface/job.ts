@@ -1,0 +1,63 @@
+export interface IJob {
+    JobID?: number;
+    Title: string;
+    Location: string;
+    CreatedAt?: Date;
+    CompanyName: string;
+    CompanyLogo: string;
+    Description: string;
+}
+export interface IJobDetail {
+    JobID: number;
+    Title: string;
+    Location: string;
+    CreatedAt: Date;
+    CompanyName: string;
+    CompanyLogo: string;
+    SalaryMin: number;
+    SalaryMax: number;
+    JobType: string;
+    Quantity: number;
+    Description: string;
+    WorkingSchedule?: string;
+    Requirements: string;
+    Benefits: string[];
+    Tags: string[];
+    InterviewProcess?: IInterviewRound[];
+}
+export interface IJobPayload {
+    EmployerID: number;
+    CategoryID: number;
+    Title: string;
+    Quantity: number;
+    SalaryMin: number;
+    SalaryMax: number;
+    Location: string;
+    JobType: string;
+    ExperienceRequired: number;
+    ExpiredDate: Date;
+    VectorID?: string;
+}
+export interface IInterviewRound {
+    RoundOrder: number;
+    RoundTitle: string;
+    Details: string;
+}
+
+export interface IJobDetailPayload {
+    Description: string;
+    Requirements: string;
+    WorkingSchedule?: string;
+    Benefits: string[];
+    Tags: string[];
+    InterviewProcess: IInterviewRound[];
+    RawTextForAi: string;
+}
+export interface IJobFilters {
+    Page: number;
+    Limit: number;
+    CategoryId?: number;
+    Location?: string;
+    MinSalary?: number;
+    MaxSalary?: number;
+}
