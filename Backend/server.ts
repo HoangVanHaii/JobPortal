@@ -6,6 +6,11 @@ import { connectDatabase } from './src/config/database';
 import { errorHandler } from './src/middleware/errorHandler';
 import userRouter from './src/router/user';
 import adminRouter from './src/router/admin/user';
+import jobApplicationRouter from './src/router/jobApplication'
+
+import skillRouter from './src/router/skill';
+import candidateRouter from './src/router/candidate';
+import resumeRouter from './src/router/resume';
 import employerRouter from './src/router/employer';
 import jobRouter from './src/router/job';
 import http from 'http'
@@ -33,6 +38,11 @@ app.use("/api/employers", employerRouter);
 app.use("/api/jobs", jobRouter);
 app.use('/api/users', userRouter);
 app.use('/api/admin', adminRouter);
+app.use('/api/job-application', jobApplicationRouter)
+
+app.use('/api/skills', skillRouter); 
+app.use('/api/candidates', candidateRouter);
+app.use('/api/resumes', resumeRouter);
 app.use('/api/messages', messageRouter)
 app.use('/api/saved-job', savedJobRouter);
 app.use(errorHandler);

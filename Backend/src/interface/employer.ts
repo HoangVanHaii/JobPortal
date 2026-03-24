@@ -1,6 +1,6 @@
 export interface IEmployer {
-    EmployerID?: number;
-    CompanyID: string;
+    EmployerID: number;
+    CompanyID: number;
     Position: string;
     ApprovalStatus?: string; 
 }
