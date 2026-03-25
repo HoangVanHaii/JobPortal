@@ -2,6 +2,7 @@ import { Request, Response, NextFunction } from "express";
 import * as candidateService from '../service/candidate';
 import { AppError } from "../utils/appError";
 import { uploadToCloudinary } from '../utils/uploadToCloudinary';
+import * as resumeService from '../service/resume';
 
 export const upsertProfile = async (req: Request, res: Response, next: NextFunction) => {
     try {
@@ -101,3 +102,46 @@ export const saveAnalyzedSkills = async (req: Request, res: Response, next: Next
     }
 };
 
+export const getCandidatesForEmployer = async (req: Request, res: Response, next: NextFunction) => {
+    try {
+        const candidates = await candidateService.getCandidatesListForEmployer();
+        
+        return res.status(200).json({
+            success: true,
+            message: "Lấy danh sách ứng viên thành công!",
+            data: candidates
+        });
+    } catch (error) {
+        next(error);
+    }
+};
+
+export const getCandidateDetailForEmployer = async (req: Request, res: Response, next: NextFunction) => {
+    try {
+        const candidateId = parseInt(req.params.id as string);
+        if (isNaN(candidateId)) {
+            throw new AppError("Mã ứng viên không hợp lệ!", 400);
+        }
+
+        const profile = await candidateService.getCandidateProfile(candidateId);
+        if (!profile) {
+            throw new AppError("Không tìm thấy thông tin ứng viên này!", 404);
+        }
+
+        const skills = await candidateService.getCandidateSkills(candidateId);
+
+        const resumes = await resumeService.getCandidateResumes(candidateId);
+
+        return res.status(200).json({
+            success: true,
+            message: "Lấy full thông tin ứng viên thành công!",
+            data: {
+                profile: profile,
+                skills: skills || [],
+                resumes: resumes || [] 
+            }
+        });
+    } catch (error) {
+        next(error);
+    }
+};

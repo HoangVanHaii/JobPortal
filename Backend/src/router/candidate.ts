@@ -11,4 +11,6 @@ router.post('/profile', authMiddleware, uploadCompany.single('AvatarUrl'),candid
 router.get('/skills', authMiddleware, candidateController.getSkills);
 router.post('/skills/analyze-text', authMiddleware,candidateMiddleware.analyzeSkillsTextValidation,validateRequest, candidateController.analyzeSkillsText);
 router.post('/skills', authMiddleware,candidateMiddleware.saveAnalyzedSkillsValidation,validateRequest, candidateController.saveAnalyzedSkills);
+router.get('/employer/list', authMiddleware, isEmployer, candidateMiddleware.getCandidatesListValidation, validateRequest, candidateController.getCandidatesForEmployer);
+router.get('/employer/detail/:id', authMiddleware, isEmployer, candidateMiddleware.getCandidateDetailValidation, validateRequest, candidateController.getCandidateDetailForEmployer);
 export default router;
