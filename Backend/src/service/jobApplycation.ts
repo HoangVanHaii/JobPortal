@@ -3,6 +3,139 @@ import pool from "../config/database";
 import { AppError } from "../utils/appError";
 import { ResultSetHeader } from "mysql2";
 import { IJobApplication, IJobApplicationList, Skill } from "../interface/jobApplication";
+import { getJobDetail } from "./job";
+import { getResumeDetail } from "./resume";
+import { analyzeAI } from "../ai/jobApplications";
+import { IJobDetail } from "../interface/job";
+import { iResumeDetail } from "../interface/resume";
+
+const delay = (ms: number) =>
+    new Promise(resolve => setTimeout(resolve, ms));
+
+//
+export const mockJobDetail: IJobDetail = {
+    JobID: 1,
+    Title: "Backend Developer (Node.js)",
+    Location: "Ho Chi Minh City",
+    CreatedAt: new Date(),
+    CompanyName: "TechSoft Vietnam",
+    CompanyLogo: "logo.png",
+    SalaryMin: 1000,
+    SalaryMax: 1500,
+    JobType: "Full-time",
+    Quantity: 2,
+
+    Description:
+        "Develop RESTful APIs using Node.js, Express, and SQL Server. Work with Redis and integrate AI services.",
+
+    WorkingSchedule: "Monday - Friday",
+
+    Requirements:
+        "Experience with Node.js, Express, REST API, SQL Server, Redis. Understanding backend architecture.",
+
+    Benefits: [
+        "13th salary",
+        "Health insurance",
+        "Flexible working time"
+    ],
+
+    Tags: [
+        "Node.js",
+        "Backend",
+        "Express",
+        "SQL Server",
+        "Redis"
+    ],
+
+    InterviewProcess: []
+};
+export const mockResumeDetail: iResumeDetail = {
+    candidateId: 10,
+
+    title: "Backend Developer",
+
+    summary:
+        "Backend developer with experience building APIs using Node.js and Express. Familiar with Redis caching and MongoDB.",
+
+    skills: [
+        {
+            skillName: "Node.js",
+            level: "Intermediate"
+        },
+        {
+            skillName: "Express",
+            level: "Intermediate"
+        },
+        {
+            skillName: "MongoDB",
+            level: "Basic"
+        },
+        {
+            skillName: "Redis",
+            level: "Basic"
+        }
+    ],
+
+    experience: [
+        {
+            companyName: "ABC Software",
+            position: "Backend Intern",
+            startDate: new Date("2024-01-01"),
+            endDate: new Date("2025-01-01"),
+            isCurrent: false,
+            description:
+                "Developed CRUD APIs and authentication using Node.js and Express."
+        }
+    ],
+
+    education: [
+        {
+            institution: "University of IT",
+            degree: "Bachelor",
+            major: "Information Technology",
+            startDate: new Date("2020-09-01"),
+            endDate: new Date("2024-06-01"),
+            gpa: "3.2"
+        }
+    ],
+
+    projects: [
+        {
+            projectName: "Job Portal System",
+            role: "Backend Developer",
+            technologies: ["Node.js", "Express", "Redis", "SQL Server"],
+            description: "Built job application system with AI scoring."
+        }
+    ],
+
+    createdAt: new Date(),
+    updatedAt: new Date()
+} as iResumeDetail;
+
+export const analyzeApplicationWithAI = async (ApplicationID: number, JobID: number, ResumeID: number) => {
+
+    // const job = await getJobDetail(JobID);
+    // if (!job) {
+    //     return;
+    // }
+    // const cv = await getResumeDetailById(ResumeID);
+    const dataAI = await analyzeAI(mockJobDetail, mockResumeDetail);
+    console.log(dataAI);
+    await updateApplicationAI(ApplicationID, dataAI.MatchScore, dataAI.AI_Summary_Review);
+    
+
+}
+
+const updateApplicationAI = async (ApplicationID: number, MatchScore: number, AISummaryReview: string) => {
+    const query = `
+        UPDATE JobApplications
+        SET MatchScore = ?, AI_Summary_Review = ?
+        WHERE ApplicationID = ?
+    `;
+    await pool.query(query, [MatchScore, AISummaryReview, ApplicationID]);
+}
+
+
 
 export const createJobApplication = async (JobID: number, CandidateID: number, ResumeID: number): Promise<number> => {
     try {
