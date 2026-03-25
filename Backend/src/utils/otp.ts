@@ -20,6 +20,7 @@ const generateOTP = () => {
 export const sendEmail = async (email: string) => {
     try {
         const otp = generateOTP();
+        console.log(otp);
         const hashedOtp = await crypto.createHash('sha256').update(otp).digest('hex');
         await redisClient.setEx(`otp:${email}`, 300, hashedOtp);
 
