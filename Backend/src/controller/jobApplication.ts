@@ -6,8 +6,7 @@ export const ApplyJob = async (req: Request,res: Response, next: NextFunction) =
     try {
         const { JobID, ResumeID } = req.body;
         const CandidateID = req.user!.id;
-
-        const applicationID = await JobApplicationService.createJobApplication(JobID, CandidateID, ResumeID);
+        // const applicationID = await JobApplicationService.createJobApplication(JobID, 10, ResumeID);
                 
         const keySubmitteds = await redisClient.keys(`application:submitted:candidate:${CandidateID}:*`);
         if (keySubmitteds.length > 0) {
@@ -18,12 +17,12 @@ export const ApplyJob = async (req: Request,res: Response, next: NextFunction) =
         if (keys.length > 0) {
             await redisClient.unlink(keys);
         }
-
+        JobApplicationService.analyzeApplicationWithAI(1111, JobID, ResumeID);
         return res.status(201).json({
             success: true,
             message: "Ứng tuyển thành công",
             data: {
-                ApplicationID: applicationID
+                ApplicationID: 1111
             }
         });
 
