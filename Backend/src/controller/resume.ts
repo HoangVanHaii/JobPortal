@@ -122,3 +122,18 @@ export const deleteResume = async (req: Request, res: Response, next: NextFuncti
         next(error);
     }
 };
+
+export const getResumeDetailByEmployer = async (req: Request, res: Response, next: NextFunction) => {
+    try {
+        const { mongoId } = req.params; 
+        const detail = await resumeService.getResumeForEmployer(mongoId as string);
+        
+        return res.status(200).json({
+            success: true,
+            message: "HR lấy chi tiết CV thành công!",
+            data: detail
+        });
+    } catch (error) {
+        next(error);
+    }
+};

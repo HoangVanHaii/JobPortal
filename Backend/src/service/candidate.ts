@@ -192,3 +192,19 @@ export const updateCandidateSkills = async (userId: number, skillsToSave: any[])
         connection.release();
     }
 };
+
+export const getCandidatesListForEmployer = async () => {
+    const query = `
+        SELECT 
+            CandidateID, 
+            FullName, 
+            AvatarUrl, 
+            Email, 
+            Phone
+        FROM Candidates
+        ORDER BY CandidateID DESC
+    `;
+    const [rows]: any = await pool.query(query);
+    return rows;
+};
+
