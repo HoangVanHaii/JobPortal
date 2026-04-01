@@ -119,7 +119,16 @@ export const getResumeDetail = async (mongoId: string, candidateId: number) => {
 
     return resumeDetail;
 };
+export const getResumeDetailByCandidateId = async (candidateId: number) => {
+    const resumeDetail = await ResumeDetail.findOne({ 
+        candidateId: candidateId 
+    });
 
+    if (!resumeDetail) {
+        throw new AppError("Không tìm thấy chi tiết CV này", 404);
+    }
+    return resumeDetail as iResumeDetail;
+}
 
 export const updateManualResume = async (candidateId: number, mongoId: string, resumeData: iResumeDetail) => {
     const updatedMongoResume = await ResumeDetail.findOneAndUpdate(

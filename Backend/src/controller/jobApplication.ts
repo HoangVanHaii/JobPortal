@@ -1,13 +1,13 @@
 import { Request, Response, NextFunction } from "express";
 import * as JobApplicationService from "../service/jobApplycation";
 import redisClient from "../config/redisClient";
+import { addJobToQueue } from "../service/cvQueue";
 
 export const ApplyJob = async (req: Request,res: Response, next: NextFunction) => {
     try {
         const { JobID, ResumeID } = req.body;
         const CandidateID = req.user!.id;
-        // const applicationID = await JobApplicationService.createJobApplication(JobID, 10, ResumeID);
-                
+        const applicationID = await JobApplicationService.createJobApplication(JobID, CandidateID, ResumeID);
         const keySubmitteds = await redisClient.keys(`application:submitted:candidate:${CandidateID}:*`);
         if (keySubmitteds.length > 0) {
             await redisClient.del(keySubmitteds); 
@@ -17,12 +17,13 @@ export const ApplyJob = async (req: Request,res: Response, next: NextFunction) =
         if (keys.length > 0) {
             await redisClient.unlink(keys);
         }
-        JobApplicationService.analyzeApplicationWithAI(1111, JobID, ResumeID);
+        addJobToQueue(applicationID, JobID, CandidateID);
+
         return res.status(201).json({
             success: true,
             message: "Ứng tuyển thành công",
             data: {
-                ApplicationID: 1111
+                ApplicationID: applicationID
             }
         });
 
