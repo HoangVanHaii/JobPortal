@@ -173,3 +173,13 @@ export const deleteResume = async (mongoId: string, candidateId: number) => {
 
     return true;
 };
+
+export const getResumeForEmployer = async (mongoId: string) => {
+    const detail = await ResumeDetail.findById(mongoId);
+    
+    if (!detail) {
+        throw new AppError("Không tìm thấy CV này hoặc ứng viên đã xóa!", 404);
+    }
+    
+    return detail;
+};

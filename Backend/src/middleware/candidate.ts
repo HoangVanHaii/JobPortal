@@ -1,4 +1,4 @@
-import { body } from "express-validator";
+import { body,param,query } from "express-validator";
 
 export const upsertProfileValidation = [
     body('FullName')
@@ -46,4 +46,19 @@ export const saveAnalyzedSkillsValidation = [
         
     body('skills.*.isNew')
         .isBoolean().withMessage("Trạng thái isNew phải là kiểu boolean (true/false)")
+];
+
+export const getCandidatesListValidation = [
+    query('page')
+        .optional()
+        .isInt({ min: 1 }).withMessage("Số trang (page) phải là số nguyên lớn hơn 0"),
+    query('limit')
+        .optional()
+        .isInt({ min: 1 }).withMessage("Giới hạn (limit) phải là số nguyên lớn hơn 0")
+];
+
+export const getCandidateDetailValidation = [
+    param('id')
+        .notEmpty().withMessage("Sếp chưa truyền ID ứng viên trên URL kìa!")
+        .isInt({ min: 1 }).withMessage("Mã ID ứng viên phải là một số nguyên dương hợp lệ!")
 ];

@@ -18,6 +18,7 @@ import { Server } from 'socket.io';
 import { setupSocket } from './src/socket';
 import messageRouter from './src/router/message'
 import savedJobRouter from './src/router/savedJob'
+import jobSkillRouter from './src/router/jobSkill'
 dotenv.config();
 
 const app = express();
@@ -45,6 +46,7 @@ app.use('/api/candidates', candidateRouter);
 app.use('/api/resumes', resumeRouter);
 app.use('/api/messages', messageRouter)
 app.use('/api/saved-job', savedJobRouter);
+app.use('/api/job-skills', jobSkillRouter);
 app.use(errorHandler);
 connectDatabase();
 
