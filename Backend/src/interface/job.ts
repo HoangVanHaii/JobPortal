@@ -23,6 +23,7 @@ export interface IJobDetail {
     Requirements: string;
     Benefits: string[];
     Tags: string[];
+    RawTextForAi: string;
     InterviewProcess?: IInterviewRound[];
 }
 export interface IJobPayload {

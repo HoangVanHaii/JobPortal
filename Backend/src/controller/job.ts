@@ -101,6 +101,16 @@ export const createJob = async (req: Request, res: Response, next: NextFunction)
             ExperienceRequired: experienceRequired,
             ExpiredDate: expiredDate
         }
+        const rawTextForAi = `
+            Chức danh công việc: ${title}.
+            Địa điểm làm việc: ${location}.
+            Hình thức làm việc: ${jobType}.
+            Yêu cầu số năm kinh nghiệm: ${experienceRequired} năm.
+            Từ khóa kỹ năng (Tags): ${tags.join(", ")}.
+            Mô tả chi tiết: ${description}.
+            Yêu cầu chuyên môn: ${requirements}.
+            Phúc lợi và quyền lợi: ${benefits.join(", ")}.
+        `.replace(/\s+/g, ' ').trim();
         const jobDetailPayload: IJobDetailPayload = {
             Description: description,
             Requirements: requirements,
@@ -108,16 +118,20 @@ export const createJob = async (req: Request, res: Response, next: NextFunction)
             Benefits: benefits,
             Tags: tags,
             InterviewProcess: interviewProcess,
-            RawTextForAi: `${title} ${description} ${requirements} ${benefits.join(" ")} ${tags.join(" ")}`
+            RawTextForAi: rawTextForAi
         };
 
         const jobId = await jobService.createJob(jobPayload, jobDetailPayload);
         await clearJobsListCache();
+        jobService.processJobVectorNgam(jobId, jobDetailPayload.RawTextForAi).catch(err => {
+            console.error(`[AI-BACKGROUND] Lỗi khi nạp Vector cho Job ID: ${jobId}`, err);
+        });
         res.status(201).json({ 
             success: true,
             message: "Tạo công việc thành công",
             data: jobId
-         });
+        });
+        
 
     } catch (error) {
         next(error);

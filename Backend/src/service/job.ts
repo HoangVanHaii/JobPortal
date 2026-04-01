@@ -1,5 +1,7 @@
 import { PoolConnection } from "mysql2/promise";
 import pool from "../config/database";
+import { generateEmbedding } from "./searchAi";
+import { pineconeIndex } from "../config/pinecone";
 import { IJobPayload, IJob, IJobFilters, IJobDetailPayload, IJobDetail, IInterviewRound } from "../interface/job";
 import { JobDetailModel } from "../model/job";
 
@@ -39,6 +41,24 @@ export const createJob = async (job: IJobPayload, jobDetail: IJobDetailPayload) 
         throw error;
     }
 }
+export const processJobVectorNgam = async (jobId: number, rawTextForAi: string) => {
+    try {
+        const vector = await generateEmbedding(rawTextForAi);
+        await pineconeIndex.upsert({
+            records: [
+                {
+                    id: jobId.toString(),
+                    values: vector,
+                    metadata: { jobId }
+                }
+            ]
+        });
+
+        console.log(`[AI-LOG] Đã index thành công Job ID: ${jobId}`);
+    } catch (error) {
+        console.error(`[AI-ERROR] Job ID ${jobId}:`, error);
+    }
+};
 export const mergeJob = async(jobIds: number[], rows: any) => {
     const mongoDetails = await JobDetailModel.find({
         mysqlJobID: { $in: jobIds }
@@ -116,6 +136,7 @@ export const getJobDetail = async (jobId: number) => {
         WorkingSchedule: jobDetailDoc.workingSchedule || undefined,
         Requirements: jobDetailDoc.requirements,
         Benefits: jobDetailDoc.benefits,
+        RawTextForAi: jobDetailDoc.rowTextForAi || "",
         Tags: jobDetailDoc.tags,
         InterviewProcess: (jobDetailDoc.interviewProcess as unknown as IInterviewRound[]) || undefined
     }
@@ -206,4 +227,34 @@ export const isJobOwner = async (employerId: number, jobId: number) => {
     const value = [employerId, jobId]
     const [rows]: any = await pool.query(query, value);
     return rows.length > 0;
+}
+
+export const getAllJobVectors = async () => {
+    const query = `
+        SELECT 
+            JobID, 
+            vectorID
+        FROM jobs 
+        WHERE ExpiredDate > NOW() 
+          AND vectorId IS NOT NULL
+    `;
+    const [rows]: any = await pool.query(query);
+    return rows;
+}
+export const getJobsByIds = async (jobIds: number[], placeholders: string) => {
+    const sql = `
+        SELECT j.JobID, j.Title, j.Location, j.CreatedAt, c.CompanyName, c.LogoUrl AS CompanyLogo
+        FROM jobs j
+        JOIN employers e ON j.EmployerID = e.EmployerID
+        JOIN companies c ON e.CompanyID = c.CompanyID
+        WHERE j.JobID IN (${placeholders})
+        ORDER BY FIELD(j.JobID, ${placeholders})
+        LIMIT 5
+    `;
+    const [jobs]: any = await pool.query(sql, [...jobIds, ...jobIds]);
+    return jobs as IJob[];
+}
+export const getRowTextForAI = async (jobId: number) => {
+    const jobDetail = await JobDetailModel.findOne({ mysqlJobID: jobId }).select('rowTextForAi').lean();
+    return jobDetail?.rowTextForAi || "";
 }
