@@ -103,6 +103,35 @@ export const getAllJobs = async (filters: IJobFilters) => {
 
     return finalJobList as IJob[];
 }
+export const getRecommendedJobs = async (candidateId: number, page: number, limit: number) => {
+    const offset = (page - 1) * limit;
+
+    const [rows]: any = await pool.query(
+        `
+        SELECT 
+            j.JobID,
+            j.Title,
+            j.Location,
+            j.CreatedAt,
+            c.CompanyName,
+            c.LogoUrl AS CompanyLogo,
+            r.Score
+        FROM JobRecommendations r
+        JOIN jobs j ON r.JobID = j.JobID
+        JOIN employers e ON j.EmployerID = e.EmployerID
+        JOIN companies c ON e.CompanyID = c.CompanyID
+        WHERE r.CandidateID = ?
+        ORDER BY r.Score DESC
+        LIMIT ? OFFSET ?
+        `,
+        [candidateId, limit, offset]
+    );
+
+    const jobIds = rows.map((job: any) => job.JobID);
+    const finalJobList = await mergeJob(jobIds, rows);
+
+    return finalJobList;
+};
 export const getJobDetail = async (jobId: number) => {
     const query = `SELECT j.JobID, j.Title, j.Location, j.CreatedAt, j.SalaryMin, j.SalaryMax, j.JobType, c.CompanyName, c.LogoUrl AS CompanyLogo, j.Quantity
         FROM jobs j

@@ -36,6 +36,29 @@ export const getAllJobs = async (req: Request, res: Response, next: NextFunction
         next(error);
     }
 }
+export const getRecommendedJobs = async (req: Request, res: Response, next: NextFunction) => {
+    try {
+        const candidateId = req.user!.id;
+
+        const page = Number(req.query.page) || 1;
+        const limit = Number(req.query.limit) || 10;
+
+        const jobs = await jobService.getRecommendedJobs(
+            candidateId,
+            page,
+            limit
+        );
+
+        return res.json({
+            success: true,
+            message: "Lấy danh sách công việc được đề xuất thành công",
+            data: jobs
+        });
+
+    } catch (error) {
+        next(error);
+    }
+};
 export const getJobDetail = async (req: Request, res: Response, next: NextFunction) => {
     try {
         const jobId = Number(req.params.id);
