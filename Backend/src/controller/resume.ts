@@ -3,6 +3,7 @@ import * as resumeService from '../service/resume';
 import { AppError } from "../utils/appError";
 import { iResumeDetail } from '../interface/resume'
 import redisClient from '../config/redisClient';
+import { RecommendJobsByAI } from "../service/searchAi";
 
 export const generateSummaryWithAI = async (req: Request, res: Response, next: NextFunction) => {
     try {
@@ -30,7 +31,10 @@ export const createManualResume = async (req: Request, res: Response, next: Next
             // await redisClient.del(`candidate:skills:${candidateId}`);
             await redisClient.del('all_skills');
         }
-
+        const resumeDetail: iResumeDetail = await resumeService.getResumeDetail(result.mongoResumeId, candidateId);
+        RecommendJobsByAI(resumeDetail)
+            .then(() => console.log("Đã gợi ý job xong cho candidate:", candidateId))
+            .catch(err => console.error("Lỗi khi đề xuất việc làm:", err));
         return res.status(201).json({
             success: true,
             message: "Tạo CV và đồng bộ Profile Kỹ năng thành công mỹ mãn!",
@@ -94,6 +98,10 @@ export const updateManualResume = async (req: Request, res: Response, next: Next
             await redisClient.del(`resumes:list:${candidateId}`);
             await redisClient.del('all_skills');
         }
+        const resumeDetail: iResumeDetail = await resumeService.getResumeDetail(mongoId, candidateId);
+        RecommendJobsByAI(resumeDetail)
+            .then(() => console.log("Đã gợi ý job xong cho candidate:", candidateId))
+            .catch(err => console.error("Lỗi khi đề xuất việc làm:", err));
 
         return res.status(200).json({
             success: true,
