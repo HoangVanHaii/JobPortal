@@ -13,12 +13,12 @@ export const searchJobsAI = async (req: Request, res: Response, next: NextFuncti
             return res.status(200).json({ success: true, data: [] });
         }
 
-        const jobIds = matchedResults.map(m => m.jobId);
+        const jobIds = matchedResults.map((m: any) => m.jobId);
         const placeholders = jobIds.map(() => '?').join(',');
         const jobs = await jobService.getJobsByIds(jobIds, placeholders);
         const finalJobs = [];
         for (const job of jobs) {
-            const matchData = matchedResults.find(m => m.jobId === job.JobID);
+            const matchData = matchedResults.find((m: any) => m.jobId === job.JobID);
             const matchScore = matchData ? Math.round(matchData.score * 100) : 0;
 
             const rowTextForAi = await jobService.getRowTextForAI(job.JobID!);

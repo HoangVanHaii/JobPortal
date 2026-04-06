@@ -25,7 +25,7 @@ export const searchJobsByAI = async (searchQuery: string, topK: number = 10) => 
             includeMetadata: true, 
         });
 
-        const matchedResults = queryResponse.matches.map(match => ({
+        const matchedResults = queryResponse.matches.map((match: any) => ({
             jobId: Number(match.id),
             score: match.score || 0
         }));
