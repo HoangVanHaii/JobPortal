@@ -9,14 +9,14 @@ import { analyzeAI } from "../ai/jobApplications";
 
 //
 
-export const analyzeApplicationWithAI = async (ApplicationID: number, JobID: number, CandidateID: number) => {
+export const analyzeApplicationWithAI = async (ApplicationID: number, JobID: number, ResumeID: number) => {
     const job = await getJobDetail(JobID);
     if (!job) {
         throw new Error(`Job ${JobID} not found`);
     }
-    const cv = await getResumeDetailByCandidateId(CandidateID);
+    const cv = await getResumeDetailByCandidateId(ResumeID);
     if (!cv) {
-        throw new Error(`CV not found for candidate ${CandidateID}`);
+        throw new Error(`CV not found for candidate ${ResumeID}`);
     }
 
     const dataAI = await analyzeAI(job, cv, ApplicationID);

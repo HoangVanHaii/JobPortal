@@ -3,7 +3,7 @@ import { analyzeApplicationWithAI } from "./jobApplycation";
 interface QueueItem {
     ApplicationID: number;
     JobID: number;
-    CandidateID: number;
+    ResumeID: number;
 }
 const queue: QueueItem[] = [];
 let isProcessing = false;
@@ -16,7 +16,7 @@ const processQueue = async () => {
         const currentJob = queue[0];
         if (currentJob) {
             try {
-                await analyzeApplicationWithAI(currentJob.ApplicationID, currentJob.JobID, currentJob.CandidateID);
+                await analyzeApplicationWithAI(currentJob.ApplicationID, currentJob.JobID, currentJob.ResumeID);
                 queue.shift();
                 await sleep(3000);
             } catch (error: any) {
@@ -33,7 +33,7 @@ const processQueue = async () => {
     }
     isProcessing = false;
 }
-export const addJobToQueue = (ApplicationID: number, JobID: number, CandidateID: number) => {
-    queue.push({ ApplicationID, JobID, CandidateID });
+export const addJobToQueue = (ApplicationID: number, JobID: number, ResumeID: number) => {
+    queue.push({ ApplicationID, JobID, ResumeID });
     processQueue();
 }

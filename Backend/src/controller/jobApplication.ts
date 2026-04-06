@@ -17,7 +17,7 @@ export const ApplyJob = async (req: Request,res: Response, next: NextFunction) =
         if (keys.length > 0) {
             await redisClient.unlink(keys);
         }
-        addJobToQueue(applicationID, JobID, CandidateID);
+        addJobToQueue(applicationID, JobID, ResumeID);
 
         return res.status(201).json({
             success: true,
