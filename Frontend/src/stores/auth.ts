@@ -1,0 +1,113 @@
+import { ref } from 'vue';
+import { defineStore } from 'pinia';
+import type { IUser } from '../types/user';
+import { login, register, registerSendOtp, verifyOtp } from '../services/auth';
+
+export const useAuthStore = defineStore('auth',() => {
+    const loading = ref<boolean>(false);
+    const message = ref<string>('');
+    const user = ref<IUser | null>(null);
+    const error = ref<boolean>(false);
+    const accessToken = ref<string>('');
+    const refreshToken = ref<string>('');
+    const isLogin = ref<boolean>(false);
+    const verifyToken = ref<string>('');
+    const role = ref<string>('');
+    const emailUser = ref<string>('');
+    
+
+    const registerSendOtpStore = async (email: string) => {
+        try {
+            error.value = false;
+            loading.value = true;
+            message.value = '';
+            const data = await registerSendOtp(email);
+            emailUser.value = email;
+            message.value = data.message || 'Gửi OTP thành công';
+        } catch (err: any) {
+            error.value = true;
+            console.error("Lỗi khi gửi OTP:", err.response?.data);
+            message.value = err.response?.data?.message || 'Đã xảy ra lỗi khi gửi OTP';
+        } finally {
+            loading.value = false;
+        }
+
+    }
+    const verifyOtpStore = async (email: string, otp: string) => {
+        try {
+            error.value = false;
+            loading.value = true;
+            message.value = '';
+
+            const data = await verifyOtp(email, otp);
+            message.value = data.message || 'Xác thực OTP thành công';
+            verifyToken.value = data.data.verifyToken;
+
+        } catch (err: any) {
+            error.value = true;
+            console.error("Lỗi khi xác thực OTP:", err.ressponse?.data);
+            message.value = err.response?.data?.message || 'Đã xảy ra lỗi khi xác thực OTP';
+        } finally {
+            loading.value = false;
+        }
+    }
+    const registerStore = async (verifyToken: string, password: string, role: string) => {
+        try {
+            error.value = false;
+            loading.value = true;
+            message.value = '';
+            const data = await register(verifyToken, password, role);
+            message.value = data.message || 'Đăng ký thành công';
+            
+        } catch (err: any) {
+            error.value = true;
+            console.error("Lỗi khi đăng ký:", err.response?.data);
+            message.value = err.response?.data?.message || 'Đã xảy ra lỗi khi đăng ký';
+
+        }finally {
+            loading.value = false;
+        }
+    }
+    const loginStore = async (email: string, password: string) => {
+        try {
+            error.value = false;
+            loading.value = true;
+            message.value = '';
+            const data = await login(email, password);
+            accessToken.value = data.data.accessToken;
+            refreshToken.value = data.data.refreshToken;
+            role.value = data.data.role;
+            isLogin.value = true;
+            message.value = data.message || 'Đăng nhập thành công';
+
+            localStorage.setItem("accessToken", data.data.accessToken);
+            localStorage.setItem("refreshToken", data.data.refreshToken);
+            localStorage.setItem("role", data.data.role);
+            
+        } catch (err: any) {
+            error.value = true;
+            console.error("Lỗi khi đăng nhập:", err.response?.data);
+            message.value = err.response?.data?.message || 'Đã xảy ra lỗi khi đăng nhập';
+        } finally {
+            loading.value = false;
+        }
+    }
+
+    return {
+        loading,
+        message,
+        user,
+        error,
+        isLogin,
+        accessToken,
+        refreshToken,
+        emailUser,
+        verifyToken,
+        role,
+        registerSendOtpStore,
+        verifyOtpStore,
+        registerStore,
+        loginStore
+    }
+
+})
