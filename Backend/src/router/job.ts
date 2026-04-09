@@ -1,7 +1,7 @@
 import express from "express";
 import * as jobController from "../controller/job";
 import * as searchAiController from "../controller/searchAi";
-import { authMiddleware, isEmployer } from "../middleware/auth";
+import { authMiddleware, isAdmin, isEmployer } from "../middleware/auth";
 import { validateRequest } from "../middleware/validateRequest";
 import *as jobMiddleware from "../middleware/job";
 const router = express.Router();
@@ -15,4 +15,6 @@ router.post("/create-job", authMiddleware, isEmployer, jobMiddleware.createJobVa
 
 router.delete('/soft-delete-job/:id', authMiddleware, isEmployer, jobController.closeJob);
 router.put('/update-job/:id', authMiddleware, isEmployer, jobMiddleware.updateJobValidation, validateRequest, jobController.updateJob);
+
+router.put('/change-status-job/:id', authMiddleware, isAdmin, jobMiddleware.changeStatusJobValidation, validateRequest, jobController.changeStatusJob);
 export default router;
