@@ -71,7 +71,7 @@ const handleSubmit = async () => {
 </script>
 <template>
     <div class="min-h-screen flex items-center justify-center pt-[40px] bg-gray-200">
-        <div class="w-[70%] py-[50px] flex flex-col items-center rounded-[10px] bg-white ">
+        <div class="w-[70%] py-[50px] flex flex-col shadow-sm items-center rounded-[10px] bg-white ">
               <h2 class="text-center text-blue-600 text-3xl font-semibold">ĐĂNG KÝ TÀI KHOẢN {{ computedRole }}</h2>  
               <form @submit.prevent="handleSubmit" class="flex flex-col gap-[40px] w-[95%] px-[50px] py-[20px]">
                 <div class="w-full flex flex-col gap-2 ">
