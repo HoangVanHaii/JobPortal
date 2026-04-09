@@ -20,7 +20,6 @@ const generateOTP = () => {
 export const sendEmail = async (email: string) => {
     try {
         const otp = generateOTP();
-        console.log(otp);
         const hashedOtp = await crypto.createHash('sha256').update(otp).digest('hex');
         await redisClient.setEx(`otp:${email}`, 300, hashedOtp);
 
@@ -56,7 +55,10 @@ export const verify = async (email: string, otp: string) => {
         await redisClient.del(`otp:${email}`);
         return { message: "OTP hợp lệ", verifyToken: verifyToken };
     } catch (error) {
+        if (error instanceof AppError) {
+            throw error;
+        }
         console.error('Lỗi khi xác minh OTP:', error);
-        throw error instanceof AppError ? error : new AppError('Lỗi khi xác minh OTP', 500);
+        throw new AppError('Đã xảy ra lỗi khi xác minh OTP', 500);
     }
 }

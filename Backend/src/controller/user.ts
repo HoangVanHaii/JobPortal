@@ -75,7 +75,11 @@ export const login = async (req: Request, res: Response, next: NextFunction) => 
         return res.status(200).json({
             success: true,
             message: "Đăng nhập thành công",
-            data: { accessToken, refreshToken }
+            data: {
+                accessToken,
+                refreshToken,
+                role: user.Role
+             }
         });
     } catch (error) {
         next(error);
