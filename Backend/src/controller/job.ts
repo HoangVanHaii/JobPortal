@@ -122,8 +122,7 @@ export const createJob = async (req: Request, res: Response, next: NextFunction)
         };
 
         const jobId = await jobService.createJob(jobPayload, jobDetailPayload);
-        await clearJobsListCache();
-        jobService.processJobVectorNgam(jobId, jobDetailPayload.RawTextForAi).catch(err => {
+        jobService.processJobVector(jobId, jobDetailPayload.RawTextForAi).catch(err => {
             console.error(`[AI-BACKGROUND] Lỗi khi nạp Vector cho Job ID: ${jobId}`, err);
         });
         res.status(201).json({ 
@@ -164,6 +163,10 @@ export const updateJob = async (req: Request, res: Response, next: NextFunction)
         const isOwner = await jobService.isJobOwner(employerId, jobId);
         if (!isOwner) {
             throw new AppError('Bạn không phải là người tạo là công việc này', 403)
+        }
+        const isPending = await jobService.isJobPending(jobId);
+        if (!isPending) {
+            throw new AppError('Chỉ được phép chỉnh sửa công việc đang ở trạng thái chờ duyệt', 400)
         }
         const { title, location, salaryMin, salaryMax, jobType, quantity, description, workingSchedule, requirements, benefits, tags, interviewProcess } = req.body;
 
@@ -221,6 +224,22 @@ export const getJobOfMe = async (req: Request, res: Response, next: NextFunction
             success: true,
             message: "Lấy công việc của bạn thành công",
             data: jobs
+        });
+    } catch (error) {
+        next(error);
+    }
+}
+
+export const changeStatusJob = async (req: Request, res: Response, next: NextFunction) => {
+    try {
+        const jobId = parseInt(req.params.id.toString());
+        // const adminId = parseInt(req.user!.id.toString());
+        const { status } = req.body;
+        await jobService.changeStatusJob(jobId, status);
+        await clearJobsListCache();
+        res.status(200).json({
+            success: true,
+            message: "Thay đổi trạng thái công việc thành công"
         });
     } catch (error) {
         next(error);

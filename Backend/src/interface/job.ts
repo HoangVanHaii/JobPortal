@@ -6,6 +6,7 @@ export interface IJob {
     CompanyName: string;
     CompanyLogo: string;
     Description: string;
+    Status: string;
 }
 export interface IJobDetail {
     JobID: number;
@@ -14,6 +15,7 @@ export interface IJobDetail {
     CreatedAt: Date;
     CompanyName: string;
     CompanyLogo: string;
+    Status: string;
     SalaryMin: number;
     SalaryMax: number;
     JobType: string;

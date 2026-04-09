@@ -1,4 +1,4 @@
-import { body } from "express-validator";
+import { body, param } from "express-validator";
 
 export const createJobValidation = [
     body("categoryId").isInt().withMessage("CategoryID phải là một số nguyên"),
@@ -40,4 +40,8 @@ export const updateJobValidation = [
     body("interviewProcess.*.roundOrder").optional().isInt().withMessage("RoundOrder phải là một số nguyên"),
     body("interviewProcess.*.roundTitle").optional().notEmpty().withMessage("RoundTitle không được để trống"),
     body("interviewProcess.*.details").optional().notEmpty().withMessage("Details không được để trống")
+];
+export const changeStatusJobValidation = [
+    body("status").isIn(['Pending', 'Approved', 'Rejected']).withMessage("Status phải là một trong các giá trị: Pending, Approved, Rejected"),
+    param("id").isInt().withMessage("Job ID phải là một số nguyên")
 ];

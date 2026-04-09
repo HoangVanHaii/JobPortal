@@ -41,7 +41,7 @@ export const createJob = async (job: IJobPayload, jobDetail: IJobDetailPayload) 
         throw error;
     }
 }
-export const processJobVectorNgam = async (jobId: number, rawTextForAi: string) => {
+export const processJobVector = async (jobId: number, rawTextForAi: string) => {
     try {
         const vector = await generateEmbedding(rawTextForAi);
         await pineconeIndex.upsert({
@@ -49,7 +49,10 @@ export const processJobVectorNgam = async (jobId: number, rawTextForAi: string) 
                 {
                     id: jobId.toString(),
                     values: vector,
-                    metadata: { jobId }
+                    metadata: {
+                        type: "job",
+                        jobId
+                    }
                 }
             ]
         });
@@ -77,11 +80,11 @@ export const getAllJobs = async (filters: IJobFilters) => {
     const offset = (Page - 1) * Limit;
     const queryParams: any[] = [];
     
-    let query = `SELECT j.JobID, j.Title, j.Location, j.CreatedAt, c.CompanyName, c.LogoUrl AS CompanyLogo 
+    let query = `SELECT j.JobID, j.Title, j.Location, j.CreatedAt, c.CompanyName, c.LogoUrl AS CompanyLogo, j.Status
         FROM jobs j
         JOIN employers e ON j.EmployerID = e.EmployerID
         JOIN companies c ON e.CompanyID = c.CompanyID
-        WHERE j.ExpiredDate > NOW()`;
+        WHERE j.ExpiredDate > NOW() AND j.Status = 'Approved'`;
     if (CategoryId) {
         query += " AND j.CategoryID = ?";
         queryParams.push(CategoryId);
@@ -104,7 +107,7 @@ export const getAllJobs = async (filters: IJobFilters) => {
     return finalJobList as IJob[];
 }
 export const getJobDetail = async (jobId: number) => {
-    const query = `SELECT j.JobID, j.Title, j.Location, j.CreatedAt, j.SalaryMin, j.SalaryMax, j.JobType, c.CompanyName, c.LogoUrl AS CompanyLogo, j.Quantity
+    const query = `SELECT j.JobID, j.Title, j.Location, j.CreatedAt, j.SalaryMin, j.SalaryMax, j.JobType, c.CompanyName, c.LogoUrl AS CompanyLogo, j.Status, j.Quantity
         FROM jobs j
         JOIN Employers e ON j.EmployerID = e.EmployerID
         JOIN Companies c ON e.CompanyID = c.CompanyID
@@ -128,6 +131,7 @@ export const getJobDetail = async (jobId: number) => {
         CreatedAt: job.CreatedAt!,
         CompanyName: job.CompanyName,
         CompanyLogo: job.CompanyLogo,
+        Status: job.Status,
         Quantity: rows[0].Quantity,
         SalaryMax: rows[0].SalaryMax,
         SalaryMin: rows[0].SalaryMin,
@@ -208,7 +212,7 @@ export const getJobOfMe = async (page: number, limit: number) => {
     const offset = (page - 1) * limit;
     const queryParams: any[] = [];
 
-    let query = `SELECT j.JobID, j.Title, j.Location, j.CreatedAt, c.CompanyName, c.LogoUrl AS CompanyLogo 
+    let query = `SELECT j.JobID, j.Title, j.Location, j.CreatedAt, c.CompanyName, c.LogoUrl AS CompanyLogo, j.Status
         FROM jobs j
         JOIN employers e ON j.EmployerID = e.EmployerID
         JOIN companies c ON e.CompanyID = c.CompanyID
@@ -243,7 +247,7 @@ export const getAllJobVectors = async () => {
 }
 export const getJobsByIds = async (jobIds: number[], placeholders: string) => {
     const sql = `
-        SELECT j.JobID, j.Title, j.Location, j.CreatedAt, c.CompanyName, c.LogoUrl AS CompanyLogo
+        SELECT j.JobID, j.Title, j.Location, j.CreatedAt, c.CompanyName, c.LogoUrl AS CompanyLogo, j.Status
         FROM jobs j
         JOIN employers e ON j.EmployerID = e.EmployerID
         JOIN companies c ON e.CompanyID = c.CompanyID
@@ -257,4 +261,17 @@ export const getJobsByIds = async (jobIds: number[], placeholders: string) => {
 export const getRowTextForAI = async (jobId: number) => {
     const jobDetail = await JobDetailModel.findOne({ mysqlJobID: jobId }).select('rowTextForAi').lean();
     return jobDetail?.rowTextForAi || "";
+}
+export const isJobPending = async (jobId: number) => {
+    const query = `SELECT Status FROM jobs WHERE JobID = ?`;
+    const [rows]: any = await pool.query(query, [jobId]);
+    if (rows.length === 0) {
+        throw new Error("Không tìm thấy công việc!");
+    }
+    return rows[0].Status === 'Pending';
+}
+export const changeStatusJob = async (jobId: number, newStatus: string) => {
+    const query = `UPDATE jobs set Status = ? WHERE JobID = ?`
+    await pool.query(query, [newStatus, jobId]);
+    return true;
 }
