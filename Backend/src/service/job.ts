@@ -2,6 +2,7 @@ import { PoolConnection } from "mysql2/promise";
 import pool from "../config/database";
 import { IJobPayload, IJob, IJobFilters, IJobDetailPayload, IJobDetail, IInterviewRound } from "../interface/job";
 import { JobDetailModel } from "../model/job";
+import { generateAndStoreVector } from '../utils/ai';
 
 export const insertJobToMySQL = async (pool: PoolConnection, job: IJobPayload) => {
     const jobQuery = "INSERT INTO jobs (EmployerID, CategoryID, Title, Quantity, SalaryMin, SalaryMax, Location, JobType, ExperienceRequired, ExpiredDate) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
@@ -29,6 +30,11 @@ export const createJob = async (job: IJobPayload, jobDetail: IJobDetailPayload) 
         const newMysqlId = await insertJobToMySQL(connection, job);
         await insertJobDetailToMongoDB(jobDetail, newMysqlId);     
        
+        if (jobDetail.RawTextForAi) {
+            const vectorId = await generateAndStoreVector(jobDetail.RawTextForAi, 'job', newMysqlId);
+            await connection.query("UPDATE jobs SET VectorID = ? WHERE JobID = ?", [vectorId, newMysqlId]);
+        }
+
         await connection.commit();
         connection.release();
         return newMysqlId;
@@ -155,6 +161,8 @@ export const updateJob = async (payload: any) => {
         mysqlValues.push(payload.Quantity);
     }
 
+    const currentJobId = payload.JobID || payload.JobId;
+
     if (mysqlSetFields.length > 0) {
         const mysqlQuery = `UPDATE jobs SET ${mysqlSetFields.join(', ')} WHERE JobID = ?`;
         mysqlValues.push(payload.JobID);
@@ -180,6 +188,19 @@ export const updateJob = async (payload: any) => {
             { $set: mongoUpdateData }
         );
     }
+
+    const titleText = payload.Title || '';
+    const descText = payload.Description || '';
+    const reqText = payload.Requirements || '';
+    const benefitsText = payload.Benefits ? payload.Benefits.join(" ") : '';
+    const tagsText = payload.Tags ? payload.Tags.join(" ") : '';
+    
+    const rawTextForAi = `${titleText} ${descText} ${reqText} ${benefitsText} ${tagsText}`.trim();
+
+    if (rawTextForAi) {
+        await generateAndStoreVector(rawTextForAi, 'job', currentJobId);
+    }
+
     return true;
 }
 

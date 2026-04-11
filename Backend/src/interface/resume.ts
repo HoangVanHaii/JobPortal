@@ -13,10 +13,11 @@ export interface iResume {
 }
 
 export interface iResumeDetail extends Document {
-    candidateId: number;    
+    resumeId: number;
+    // candidateId: number;    
     title?: string;         
     summary?: string;
-    
+   
     skills?: {
         skillId?: number;    
         skillName: string;

@@ -4,6 +4,7 @@ import { AppError } from '../utils/appError';
 import { iResumeDetail,iResume } from '../interface/resume';
 import { updateCandidateSkills } from './candidate';
 import ResumeDetail from '../model/resumeDetail';
+import { generateAndStoreVector } from '../utils/ai';
 const ai = new GoogleGenAI({});
 
 export const generateResumeSummary = async (resumeData: any) => {
@@ -55,73 +56,136 @@ export const generateResumeSummary = async (resumeData: any) => {
     }
 };
 
-export const buildManualResume = async (candidateId: number, resumeData: iResumeDetail) => {
-    const newResumeDetail = new ResumeDetail({
-        candidateId,
-        title: resumeData.title || 'CV Chưa Đặt Tên',
-        summary: resumeData.summary,
-        skills: resumeData.skills || [], 
-        experience: resumeData.experience || [],
-        education: resumeData.education || [],
-        projects: resumeData.projects || []
-    });
+const buildResumeRichText = (data: iResumeDetail) => {
+    const skills = data.skills ? data.skills.map((s: any) => s.skillName || s).join(', ') : 'Chưa có';
+    const experience = data.experience ? data.experience.map((e: any) => `${e.position} tại ${e.companyName}`).join('. ') : 'Chưa có';
+    const education = data.education ? data.education.map((e: any) => `${e.degree} ngành ${e.major}`).join('. ') : 'Chưa có';
     
-    const savedMongoResume = await newResumeDetail.save();
-    const mongoIdString = savedMongoResume._id.toString();
-
-    if (resumeData.skills && resumeData.skills.length > 0) {
-        await updateCandidateSkills(candidateId, resumeData.skills);
-    }
-
-    const query = `
-        INSERT INTO Resumes (CandidateID, Title, MongoResumeID, Summary, IsAnalyzed) 
-        VALUES (?, ?, ?, ?, ?)
-    `;
-    
-    const [result]: any = await pool.query(query, [
-        candidateId, 
-        resumeData.title || 'CV Chưa Đặt Tên', 
-        mongoIdString, 
-        resumeData.summary || null,
-        true 
-    ]);
-
-    return {
-        resumeId: result.insertId,
-        mongoResumeId: mongoIdString
-    };
+    return `Tiêu đề CV: ${data.title || ''}. Tóm tắt: ${data.summary || ''}. Kỹ năng chuyên môn: ${skills}. Kinh nghiệm làm việc: ${experience}. Học vấn: ${education}.`;
 };
 
-export const getCandidateResumes = async(candidateId: number) =>{
+// export const buildManualResume = async (candidateId: number, resumeData: iResumeDetail) => {
+//     const newResumeDetail = new ResumeDetail({
+//         candidateId,
+//         title: resumeData.title || 'CV Chưa Đặt Tên',
+//         summary: resumeData.summary,
+//         skills: resumeData.skills || [], 
+//         experience: resumeData.experience || [],
+//         education: resumeData.education || [],
+//         projects: resumeData.projects || []
+//     });
+    
+//     const savedMongoResume = await newResumeDetail.save();
+//     const mongoIdString = savedMongoResume._id.toString();
+
+//     if (resumeData.skills && resumeData.skills.length > 0) {
+//         await updateCandidateSkills(candidateId, resumeData.skills);
+//     }
+
+//     const query = `
+//         INSERT INTO Resumes (CandidateID, Title, MongoResumeID, Summary, IsAnalyzed) 
+//         VALUES (?, ?, ?, ?, ?)
+//     `;
+    
+//     const [result]: any = await pool.query(query, [
+//         candidateId, 
+//         resumeData.title || 'CV Chưa Đặt Tên', 
+//         mongoIdString, 
+//         resumeData.summary || null,
+//         true 
+//     ]);
+
+//     const newResumeId = result.insertId;
+
+
+//     const richText = buildResumeRichText(resumeData); 
+//     const vectorId = await generateAndStoreVector(richText, 'resume', newResumeId); 
+
+//     await pool.query('UPDATE Resumes SET VectorID = ? WHERE ResumeID = ?', [vectorId, newResumeId]);
+
+//     return {
+//         resumeId: newResumeId,
+//         mongoResumeId: mongoIdString,
+//         vectorId: vectorId 
+//     };
+// };
+export const buildManualResume = async (candidateId: number, resumeData: iResumeDetail) => {
+    const connection = await pool.getConnection();
+    await connection.beginTransaction(); 
+
+    try {
+        const insertQuery = `
+            INSERT INTO Resumes (CandidateID, Title, Summary, IsAnalyzed) 
+            VALUES (?, ?, ?, ?)
+        `;
+        const [result]: any = await connection.query(insertQuery, [
+            candidateId, 
+            resumeData.title || 'CV Chưa Đặt Tên', 
+            resumeData.summary || null,
+            true 
+        ]);
+        const newResumeId = result.insertId;
+
+        const newResumeDetail = new ResumeDetail({
+            resumeId: newResumeId, 
+            title: resumeData.title || 'CV Chưa Đặt Tên',
+            summary: resumeData.summary,
+            skills: resumeData.skills || [], 
+            experience: resumeData.experience || [],
+            education: resumeData.education || [],
+            projects: resumeData.projects || []
+        });
+        
+        await newResumeDetail.save();
+
+        if (resumeData.skills && resumeData.skills.length > 0) {
+            await updateCandidateSkills(candidateId, resumeData.skills);
+        }
+        const richText = buildResumeRichText(resumeData); 
+        const vectorId = await generateAndStoreVector(richText, 'resume', newResumeId); 
+        
+        await connection.query(
+            'UPDATE Resumes SET VectorID = ? WHERE ResumeID = ?', 
+            [vectorId, newResumeId]
+        );
+
+        await connection.commit();
+
+        return { 
+            resumeId: newResumeId, 
+            vectorId: vectorId 
+        };
+
+    } catch (error) {
+        await connection.rollback();
+        console.error("Lỗi tạo CV:", error);
+        throw new AppError("Có lỗi xảy ra khi tạo CV, vui lòng thử lại!", 500);
+    } finally {
+        connection.release();
+    }
+};
+
+export const getCandidateResumes = async (candidateId: number) => {
     const query = `SELECT 
             ResumeID, 
             Title, 
-            MongoResumeID, 
             Summary, 
             IsAnalyzed, 
             CreatedAt 
         FROM Resumes 
         WHERE CandidateID = ? 
-        ORDER BY CreatedAt DESC`
-    const [rows]:any= await pool.query( query,[candidateId]);
+        ORDER BY CreatedAt DESC`;
+    const [rows]: any = await pool.query(query, [candidateId]);
     return rows;
 }
 
-export const getResumeDetail = async (mongoId: string, candidateId: number) => {
-    const resumeDetail = await ResumeDetail.findOne({ 
-        _id: mongoId,
-        candidateId: candidateId 
-    });
-
-    if (!resumeDetail) {
-        throw new AppError("Không tìm thấy chi tiết CV này hoặc sếp không có quyền xem!", 404);
-    }
-
-    return resumeDetail;
+export const getResumeDetail = async (resumeId: number) => {
+    return await ResumeDetail.findOne({ resumeId: resumeId });
 };
 
 
 export const updateManualResume = async (candidateId: number, mongoId: string, resumeData: iResumeDetail) => {
+    // 1. Cập nhật Mongo
     const updatedMongoResume = await ResumeDetail.findOneAndUpdate(
         { _id: mongoId, candidateId: candidateId }, 
         {
@@ -143,17 +207,25 @@ export const updateManualResume = async (candidateId: number, mongoId: string, r
         await updateCandidateSkills(candidateId, resumeData.skills);
     }
 
-    const query = `
+    const updateMysqlQuery = `
         UPDATE Resumes 
         SET Title = ?, Summary = ? 
         WHERE MongoResumeID = ? AND CandidateID = ?
     `;
-    await pool.query(query, [
+    await pool.query(updateMysqlQuery, [
         resumeData.title, 
         resumeData.summary || null, 
         mongoId, 
         candidateId
     ]);
+    const [rows]: any = await pool.query('SELECT ResumeID FROM Resumes WHERE MongoResumeID = ?', [mongoId]);
+    
+    if (rows.length > 0) {
+        const resumeIdInt = rows[0].ResumeID;
+        const richText = buildResumeRichText(resumeData);
+        const newVectorId = await generateAndStoreVector(richText, 'resume', resumeIdInt);
+        await pool.query('UPDATE Resumes SET VectorID = ? WHERE ResumeID = ?', [newVectorId, resumeIdInt]);
+    }
 
     return updatedMongoResume;
 };
@@ -183,3 +255,8 @@ export const getResumeForEmployer = async (mongoId: string) => {
     
     return detail;
 };
+
+export const getResumeForResumeId = async (resumeId: string) => {
+
+}
+

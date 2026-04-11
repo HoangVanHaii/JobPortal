@@ -69,19 +69,19 @@ export const getMyResumes = async (req: Request, res: Response, next: NextFuncti
     }
 };
 
-export const getResumeDetail = async (req: Request, res: Response, next: NextFunction) => {
-    try {
-        const candidateId = req.user!.id;
-        const { mongoId } = req.params; 
-        const detail = await resumeService.getResumeDetail(mongoId as string, candidateId);
-        return res.status(200).json({
-            success: true,
-            data: detail
-        });
-    } catch (error) {
-        next(error);
-    }
-};
+// export const getResumeDetail = async (req: Request, res: Response, next: NextFunction) => {
+//     try {
+//         const candidateId = req.user!.id;
+//         const { mongoId } = req.params; 
+//         const detail = await resumeService.getResumeDetail(mongoId as string, candidateId);
+//         return res.status(200).json({
+//             success: true,
+//             data: detail
+//         });
+//     } catch (error) {
+//         next(error);
+//     }
+// };
 
 export const updateManualResume = async (req: Request, res: Response, next: NextFunction) => {
     try {
