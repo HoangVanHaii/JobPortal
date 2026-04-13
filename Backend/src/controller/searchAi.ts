@@ -16,32 +16,32 @@ export const searchJobsAI = async (req: Request, res: Response, next: NextFuncti
         const jobIds = matchedResults.map((m: any) => m.jobId);
         const placeholders = jobIds.map(() => '?').join(',');
         const jobs = await jobService.getJobsByIds(jobIds, placeholders);
-        const finalJobs = [];
-        for (const job of jobs) {
-            const matchData = matchedResults.find((m: any) => m.jobId === job.JobID);
-            const matchScore = matchData ? Math.round(matchData.score * 100) : 0;
+        // const finalJobs = [];
+        // for (const job of jobs) {
+        //     const matchData = matchedResults.find((m: any) => m.jobId === job.JobID);
+        //     const matchScore = matchData ? Math.round(matchData.score * 100) : 0;
 
-            const rowTextForAi = await jobService.getRowTextForAI(job.JobID!);
-            const contextText = rowTextForAi || `${job.Title} tại ${job.Location}`;
+        //     const rowTextForAi = await jobService.getRowTextForAI(job.JobID!);
+        //     const contextText = rowTextForAi || `${job.Title} tại ${job.Location}`;
 
-            let insight = "Công việc này rất phù hợp với kỹ năng và định hướng của bạn.";
-            try {
-                insight = await aiSearchService.generateJobInsights(q, contextText);
-            } catch (error) {
-                console.log(`[AI-QUOTA] Bỏ qua tạo nhận xét cho Job ${job.JobID} do quá tải API.`);
-            }
+        //     let insight = "Công việc này rất phù hợp với kỹ năng và định hướng của bạn.";
+        //     try {
+        //         insight = await aiSearchService.generateJobInsights(q, contextText);
+        //     } catch (error) {
+        //         console.log(`[AI-QUOTA] Bỏ qua tạo nhận xét cho Job ${job.JobID} do quá tải API.`);
+        //     }
 
-            finalJobs.push({
-                ...job,
-                matchScore: matchScore,
-                aiInsight: insight
-            });
-        }
+        //     finalJobs.push({
+        //         ...job,
+        //         matchScore: matchScore,
+        //         aiInsight: insight
+        //     });
+        // }
 
-        finalJobs.sort((a, b) => b.matchScore - a.matchScore);
+        // finalJobs.sort((a, b) => b.matchScore - a.matchScore);
         res.status(200).json({
             success: true,
-            data: finalJobs
+            data: jobs
         });
     } catch (error) {
         next(error);

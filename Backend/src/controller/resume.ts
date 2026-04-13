@@ -32,9 +32,9 @@ export const createManualResume = async (req: Request, res: Response, next: Next
             await redisClient.del('all_skills');
         }
         const resumeDetail: iResumeDetail = await resumeService.getResumeDetail(result.mongoResumeId, candidateId);
-        RecommendJobsByAI(resumeDetail)
-            .then(() => console.log("Đã gợi ý job xong cho candidate:", candidateId))
-            .catch(err => console.error("Lỗi khi đề xuất việc làm:", err));
+        // RecommendJobsByAI(resumeDetail)
+        //     .then(() => console.log("Đã gợi ý job xong cho candidate:", candidateId))
+        //     .catch(err => console.error("Lỗi khi đề xuất việc làm:", err));
         return res.status(201).json({
             success: true,
             message: "Tạo CV và đồng bộ Profile Kỹ năng thành công mỹ mãn!",

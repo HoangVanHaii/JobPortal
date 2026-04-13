@@ -16,5 +16,5 @@ router.post("/create-job", authMiddleware, isEmployer, jobMiddleware.createJobVa
 router.delete('/soft-delete-job/:id', authMiddleware, isEmployer, jobController.closeJob);
 router.put('/update-job/:id', authMiddleware, isEmployer, jobMiddleware.updateJobValidation, validateRequest, jobController.updateJob);
 
-router.put('/change-status-job/:id', authMiddleware, isAdmin, jobMiddleware.changeStatusJobValidation, validateRequest, jobController.changeStatusJob);
+router.put('/change-status-job/:id', authMiddleware, jobMiddleware.changeStatusJobValidation, validateRequest, jobController.changeStatusJob);
 export default router;
