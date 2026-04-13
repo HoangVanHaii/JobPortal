@@ -11,7 +11,7 @@ export const createEmployer = async (connection: PoolConnection, employer: IEmpl
         throw new AppError("Nhân viên đã tồn tại", 409);
     }
 
-    const query = "INSERT INTO employers (EmployerID, CompanyID, Posit  ion, ApprovalStatus) VALUES (?, ?, ?, ?)";
+    const query = "INSERT INTO employers (EmployerID, CompanyID, Position, ApprovalStatus) VALUES (?, ?, ?, ?)";
     const values = [employer.EmployerID, employer.CompanyID, employer.Position, employer.ApprovalStatus];
     await connection.query(query, values);
     return employer.EmployerID;

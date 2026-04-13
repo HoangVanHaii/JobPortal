@@ -17,14 +17,14 @@ export const getAllJobs = async (req: Request, res: Response, next: NextFunction
         };
         const cacheKey = `jobs_list:p${filters.Page}:l${filters.Limit}:c${filters.CategoryId || 'all'}:loc_${filters.Location || 'all'}:min${filters.MinSalary || 'all'}:max${filters.MaxSalary || 'all'}`;
         const cachedJobs = await redisClient.get(cacheKey);
-        if (cachedJobs) {
-            console.log("Lấy dữ liệu từ Redis cache");
-            return res.status(200).json({
-                success: true,
-                message: "Lấy tất cả job thành công",
-                data: JSON.parse(cachedJobs)
-            });
-        }
+        // if (cachedJobs) {
+        //     console.log("Lấy dữ liệu từ Redis cache");
+        //     return res.status(200).json({
+        //         success: true,
+        //         message: "Lấy tất cả job thành công",
+        //         data: JSON.parse(cachedJobs)
+        //     });
+        // }
         const jobs = await jobService.getAllJobs(filters);
         await redisClient.setEx(cacheKey, 3600, JSON.stringify(jobs));
         res.status(200).json({
