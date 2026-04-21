@@ -5,6 +5,9 @@ import router from '../router';
 import VerifyOtp from '../components/VerifyOtp.vue';
 import PasswordForm from '../components/PasswordForm.vue';
 import { useRoute } from 'vue-router';
+import Notify from '../components/Notify.vue';
+
+
 const route = useRoute();
 const showOtp = ref<boolean>(false);
 const useAuth = useAuthStore();
@@ -63,13 +66,34 @@ const handleSubmit = async () => {
     } else {
         isError.value = false;
         message.value = useAuth.message || 'Gửi OTP thành công!';
-        // router.push('/verify-otp');
         showOtp.value = true;
 
     }
 }
+const showNotify = ref<boolean>(false);
+const messageNotify = ref<string>('');
+
+const isSuccessNotify = ref<boolean>(false);
+const durationNotify = ref<number>(2000);
+
+const handleRegisterSucsess = () => {
+    router.push({
+        path: '/login',
+        state: {
+            registerSuccess: true,
+            email: email.value
+        }
+    })
+}
 </script>
 <template>
+    <Notify 
+        v-if="showNotify" 
+        :message="messageNotify" 
+        :isSuccess="isSuccessNotify" 
+        :duration="durationNotify"
+        @close="showNotify = false"
+    />
     <div class="min-h-screen flex items-center justify-center pt-[40px] bg-gray-200">
         <div class="w-[70%] py-[50px] flex flex-col shadow-sm items-center rounded-[10px] bg-white ">
               <h2 class="text-center text-blue-600 text-3xl font-semibold">ĐĂNG KÝ TÀI KHOẢN {{ computedRole }}</h2>  
@@ -100,7 +124,7 @@ const handleSubmit = async () => {
     <PasswordForm 
         v-if="showFormPassword"
         @close="showFormPassword = false"
-        @success="router.push('/login')"
+        @success="handleRegisterSucsess"
     />
 
 </template>
