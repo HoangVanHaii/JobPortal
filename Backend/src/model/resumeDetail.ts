@@ -2,7 +2,8 @@ import mongoose, { Schema, Document } from 'mongoose';
 import { iResumeDetail } from '../interface/resume';
 
 const ResumeDetailSchema: Schema = new Schema({
-    candidateId: { type: Number, required: true, index: true }, 
+    resumeId: { type: Number, required: true, index: true, unique: true },
+    // candidateId: { type: Number, required: true, index: true }, 
     title: { type: String, required: true },
     summary: { type: String },
     

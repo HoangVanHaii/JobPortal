@@ -5,7 +5,6 @@ export interface iResume {
     CandidateID: number;
     Title: string;
     ResumeFileUrl?: string;   
-    MongoResumeID?: string;
     VectorID?: string;        
     Summary?: string;
     IsAnalyzed?: boolean;
@@ -13,10 +12,11 @@ export interface iResume {
 }
 
 export interface iResumeDetail extends Document {
-    candidateId: number;    
+    resumeId: number;
+    // candidateId: number;    
     title?: string;         
     summary?: string;
-    
+   
     skills?: {
         skillId?: number;    
         skillName: string;
