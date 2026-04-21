@@ -226,41 +226,34 @@
   </template>
   
   <script setup lang="ts">
-  import { ref } from 'vue';
-  // Import Notify component của bạn
+  import { onMounted, ref } from 'vue';
   import Notify from '../components/Notify.vue';
-  import  type{ iResumeDetail, FormState } from '../types/resume';
-  // ============================================
-  // STATE THÔNG BÁO (NOTIFY)
-  // ============================================
+import type { iResumeDetail, FormState } from '../types/resume';
+import { useResumeStore } from '../stores/resume';
+
   const showNotify = ref(false);
-  const messageNotify = ref('');
+const messageNotify = ref('');
+  const useResume = useResumeStore();
   const isSuccessNotify = ref(true);
   
-  // Hàm Helper để gọi thông báo nhanh gọn
   const showToast = (message: string, isSuccess: boolean) => {
     messageNotify.value = message;
     isSuccessNotify.value = isSuccess;
     showNotify.value = true;
     
-    // Tự động tắt sau 3 giây (nếu Notify component của bạn chưa tự xử lý)
     setTimeout(() => {
       showNotify.value = false;
     }, 3000);
   };
-  
-  // ============================================
-  // INTERFACES
-  // ============================================
-  
-  
+  onMounted(async() => {
+    // await useResume.createResumeStore(mockResumeData);
+
+  });
+
   type ArraySection = 'skills' | 'experience' | 'education' | 'projects';
   
-  // ============================================
-  // STATE DỮ LIỆU FORM
-  // ============================================
+
   const resumeForm = ref<FormState>({
-    candidateId: 0, 
     title: '',
     summary: '',
     skills: [{ skillName: '', level: '' }],
@@ -268,10 +261,6 @@
     education: [{ institution: '', degree: '', major: '', startDate: '', endDate: '', gpa: '' }],
     projects: [{ projectName: '', role: '', techString: '', link: '', description: '' }]
   });
-  
-  // ============================================
-  // LOGIC XỬ LÝ MẢNG ĐỘNG
-  // ============================================
   const isLastItemValid = (section: ArraySection): boolean => {
     const list = resumeForm.value[section] as any[];
     if (list.length === 0) return true; 
@@ -294,7 +283,6 @@
   
   const addItem = (section: ArraySection) => {
     if (!isLastItemValid(section)) {
-      // Đã thay thế alert bằng showToast (báo lỗi màu đỏ)
       showToast('Vui lòng điền đủ thông tin bắt buộc ở ô hiện tại trước khi thêm mới!', false);
       return;
     }
@@ -314,12 +302,9 @@
     // @ts-ignore
     resumeForm.value[section].splice(index, 1);
   };
-  
-  // ============================================
-  // LOGIC SUBMIT (GỌI API)
-  // ============================================
-  const handleSubmit = async () => {
-    try {
+
+const handleSubmit = async () => {
+
       const processedExperience = resumeForm.value.experience.map(exp => {
         const result = { ...exp };
         if (result.isCurrent) {
@@ -343,20 +328,14 @@
             : []
         }))
       };
-  
-      console.log("🚀 Payload gửi lên Backend cực sạch:", payload);
-  
-      // ============================================
-      // GỌI API Ở ĐÂY
-      // const response = await axios.post('/api/resume', payload);
-      // ============================================
-  
-      // Bật thông báo thành công sau khi gọi API xong
-      showToast("Đã lưu CV thành công!", true);
-  
-    } catch (error) {
-      console.error("Lỗi khi xử lý form:", error);
-      showToast("Có lỗi xảy ra, vui lòng thử lại sau!", false);
-    }
-  };
+        await useResume.createResumeStore(payload);
+      if(useResume.error) {
+        showToast(useResume.message || 'Có lỗi xảy ra khi lưu CV!', false);
+        }
+      else {
+          showToast(useResume.message, true);
+        
+      }
+};
+
   </script>

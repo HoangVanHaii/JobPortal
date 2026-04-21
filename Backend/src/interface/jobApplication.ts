@@ -13,7 +13,7 @@ export interface IJobApplication {
     AI_Summary_Review: string;
     
     ResumeID: number;
-    ResumeDetail: iResumeDetail;
+    ResumeDetail: iResumeDetail | null;
   }
   
 export interface IJobApplicationList {

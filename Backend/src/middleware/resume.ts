@@ -3,7 +3,7 @@ import { body, param } from "express-validator";
 export const buildResumeValidation = [
     body('title')
         .trim()
-        .notEmpty().withMessage("Sếp ơi, CV thì phải có cái tên (title) để mốt dễ phân biệt chứ!"),
+        .notEmpty().withMessage("Vui lòng điền title!"),
     
     body('summary')
         .optional()

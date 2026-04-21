@@ -25,7 +25,7 @@ export const generateSummaryWithAI = async (req: Request, res: Response, next: N
 };
 
 export const createManualResume = async (req: Request, res: Response, next: NextFunction) => {
-    try {
+    try {        
         const candidateId = req.user!.id; 
         const resumeData: iResumeDetail = req.body;
         
@@ -36,12 +36,12 @@ export const createManualResume = async (req: Request, res: Response, next: Next
             await redisClient.del('all_skills');
         }
 
-        const resumeDetail = await resumeService.getResumeDetail(result.resumeId, candidateId);
-        if (resumeDetail) {
-            RecommendJobsByAI(resumeDetail)
-                .then(() => console.log("Đã gợi ý job xong cho CV mới của candidate:", candidateId))
-                .catch(err => console.error("Lỗi khi đề xuất việc làm lúc tạo mới:", err));
-        }
+        // const resumeDetail = await resumeService.getResumeDetail(result.resumeId, candidateId);
+        // if (resumeDetail) {
+        //     RecommendJobsByAI(resumeDetail)
+        //         .then(() => console.log("Đã gợi ý job xong cho CV mới của candidate:", candidateId))
+        //         .catch(err => console.error("Lỗi khi đề xuất việc làm lúc tạo mới:", err));
+        // }
 
         return res.status(201).json({
             success: true,

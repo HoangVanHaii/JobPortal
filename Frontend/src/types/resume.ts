@@ -1,38 +1,44 @@
-export interface iResumeDetail {
-    candidateId: number;    
+export interface iResumeDetail{
+    resumeId?: number;
+    // candidateId: number;    
     title?: string;         
     summary?: string;
+   
     skills?: {
-      skillId?: number;    
-      skillName: string;
-      level?: string;      
+        skillId?: number;    
+        skillName: string;
+        level?: string;      
     }[];    
+    
     experience?: {         
-      companyName: string;
-      position: string;
-      startDate: string; 
-      endDate?: string;
-      isCurrent: boolean;
-      description?: string;
+        companyName: string;
+        position: string;
+        startDate: Date | string;
+        endDate?: Date | string;
+        isCurrent: boolean;
+        description?: string;
     }[];
+    
     education?: {        
-      institution: string;
-      degree: string;
-      major: string;
-      startDate: string;
-      endDate?: string;
-      gpa?: string;
+        institution: string;
+        degree: string;
+        major: string;
+        startDate: Date | string;
+        endDate?: Date | string;
+        gpa?: string;
     }[];
+    
     projects?: {           
-      projectName: string;
-      role: string;
-      technologies: string[];
-      link?: string;
-      description?: string;
+        projectName: string;
+        role: string;
+        technologies: string[];
+        link?: string;
+        description?: string;
     }[];
+
     createdAt?: Date;
     updatedAt?: Date;
-  }
+}
   
   interface FormProject {
     projectName: string;

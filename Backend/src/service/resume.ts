@@ -89,17 +89,35 @@ export const buildManualResume = async (candidateId: number, resumeData: iResume
         if (resumeData.skills && resumeData.skills.length > 0) {
             await updateCandidateSkills(candidateId, resumeData.skills);
         }
-        const richText = buildResumeRichText(resumeData); 
-        const vectorId = await generateAndStoreVector(richText, 'resume', newResumeId); 
-        await connection.query('UPDATE Resumes SET VectorID = ? WHERE ResumeID = ?', [vectorId, newResumeId]);
-
         await connection.commit();
-        return { resumeId: newResumeId, vectorId };
+        // processResumeAI(newResumeId, resumeData).catch(err => {
+        //     console.error("AI background error:", err);
+        // });
+        return { resumeId: newResumeId };
     } catch (error) {
         await connection.rollback();
         throw error;
     } finally {
         connection.release();
+    }
+};
+const processResumeAI = async (resumeId: number, resumeData: iResumeDetail) => {
+    try {
+        const richText = buildResumeRichText(resumeData);
+
+        const vectorId = await generateAndStoreVector(
+            richText,
+            'resume',
+            resumeId
+        );
+
+        await pool.query(
+            'UPDATE Resumes SET VectorID = ?, IsAnalyzed = ? WHERE ResumeID = ?',
+            [vectorId, true, resumeId]
+        );
+
+    } catch (error) {
+        console.error("Lỗi AI resume:", error);
     }
 };
 
@@ -111,6 +129,12 @@ export const getCandidateResumes = async (candidateId: number) => {
 
 export const getResumeDetail = async (resumeId: number, candidateId: number) => {
     const [rows]: any = await pool.query(`SELECT ResumeID FROM Resumes WHERE ResumeID = ? AND CandidateID = ?`, [resumeId, candidateId]);
+    if (rows.length === 0) return null;
+
+    return await ResumeDetail.findOne({ resumeId });
+};
+export const getResumeDetailByResumeID = async (resumeId: number) => {
+    const [rows]: any = await pool.query(`SELECT ResumeID FROM Resumes WHERE ResumeID = ?`, [resumeId]);
     if (rows.length === 0) return null;
 
     return await ResumeDetail.findOne({ resumeId });
