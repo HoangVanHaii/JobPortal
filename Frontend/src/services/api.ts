@@ -1,0 +1,60 @@
+import axios from "axios";
+
+const api = axios.create({
+    baseURL: import.meta.env.REACT_APP_API_BASE_URL || 'http://localhost:3000/api',
+    headers: {
+        'Content-Type': 'application/json',
+    },
+});
+
+api.interceptors.request.use((config) => {
+    const token = localStorage.getItem('accessToken');
+    if (token) {
+        config.headers['Authorization'] = `Bearer ${token}`;
+    }
+    return config;
+}, (error) => {
+    return Promise.reject(error);
+});
+api.interceptors.response.use(
+    (response) => response, 
+    async (error) => {
+        const originalRequest = error.config;
+        if (error.response?.status === 401 && originalRequest.url.includes('/login')) {
+            return Promise.reject(error);
+        }
+        if (error.response?.status === 401 && !originalRequest._retry) {
+            originalRequest._retry = true;
+            try {
+                const refreshToken = localStorage.getItem('refreshToken');
+                
+                if (!refreshToken) {
+                    handleLogout();
+                    return Promise.reject(error);
+                }
+                const res = await axios.post(`${api.defaults.baseURL}/users/refresh-token`, {
+                    refreshToken: refreshToken
+                });
+
+                if (res.status === 200) {
+                    const { token, newRefreshToken } = res.data;
+                    localStorage.setItem('accessToken', token);
+                    if (newRefreshToken) localStorage.setItem('refreshToken', newRefreshToken);
+                    originalRequest.headers['Authorization'] = `Bearer ${token}`;
+                    return api(originalRequest);
+                }
+            } catch (refreshError) {
+                handleLogout();
+                return Promise.reject(refreshError);
+            }
+        }
+        return Promise.reject(error);
+    }
+);
+const handleLogout = () => {
+    localStorage.removeItem('accessToken');
+    localStorage.removeItem('refreshToken');
+    window.location.href = '/login';
+};
+
+export default api;

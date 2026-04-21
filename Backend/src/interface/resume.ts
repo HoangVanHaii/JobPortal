@@ -5,7 +5,6 @@ export interface iResume {
     CandidateID: number;
     Title: string;
     ResumeFileUrl?: string;   
-    MongoResumeID?: string;
     VectorID?: string;        
     Summary?: string;
     IsAnalyzed?: boolean;

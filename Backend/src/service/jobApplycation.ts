@@ -2,128 +2,30 @@ import { PoolConnection } from "mysql2/promise";
 import pool from "../config/database";
 import { AppError } from "../utils/appError";
 import { ResultSetHeader } from "mysql2";
-import { IJobApplication, IJobApplicationList, Skill } from "../interface/jobApplication";
+import { IJobApplication, IJobApplicationList } from "../interface/jobApplication";
 import { getJobDetail } from "./job";
-import { getResumeDetail } from "./resume";
+import { getResumeDetailByCandidateId } from "./resume";
 import { analyzeAI } from "../ai/jobApplications";
-import { IJobDetail } from "../interface/job";
-import { iResumeDetail } from "../interface/resume";
-
-const delay = (ms: number) =>
-    new Promise(resolve => setTimeout(resolve, ms));
 
 //
-export const mockJobDetail: IJobDetail = {
-    JobID: 1,
-    Title: "Backend Developer (Node.js)",
-    Location: "Ho Chi Minh City",
-    CreatedAt: new Date(),
-    CompanyName: "TechSoft Vietnam",
-    CompanyLogo: "logo.png",
-    SalaryMin: 1000,
-    SalaryMax: 1500,
-    JobType: "Full-time",
-    Quantity: 2,
-
-    Description:
-        "Develop RESTful APIs using Node.js, Express, and SQL Server. Work with Redis and integrate AI services.",
-
-    WorkingSchedule: "Monday - Friday",
-
-    Requirements:
-        "Experience with Node.js, Express, REST API, SQL Server, Redis. Understanding backend architecture.",
-
-    Benefits: [
-        "13th salary",
-        "Health insurance",
-        "Flexible working time"
-    ],
-
-    Tags: [
-        "Node.js",
-        "Backend",
-        "Express",
-        "SQL Server",
-        "Redis"
-    ],
-
-    InterviewProcess: []
-};
-export const mockResumeDetail: iResumeDetail = {
-    candidateId: 10,
-
-    title: "Backend Developer",
-
-    summary:
-        "Backend developer with experience building APIs using Node.js and Express. Familiar with Redis caching and MongoDB.",
-
-    skills: [
-        {
-            skillName: "Node.js",
-            level: "Intermediate"
-        },
-        {
-            skillName: "Express",
-            level: "Intermediate"
-        },
-        {
-            skillName: "MongoDB",
-            level: "Basic"
-        },
-        {
-            skillName: "Redis",
-            level: "Basic"
-        }
-    ],
-
-    experience: [
-        {
-            companyName: "ABC Software",
-            position: "Backend Intern",
-            startDate: new Date("2024-01-01"),
-            endDate: new Date("2025-01-01"),
-            isCurrent: false,
-            description:
-                "Developed CRUD APIs and authentication using Node.js and Express."
-        }
-    ],
-
-    education: [
-        {
-            institution: "University of IT",
-            degree: "Bachelor",
-            major: "Information Technology",
-            startDate: new Date("2020-09-01"),
-            endDate: new Date("2024-06-01"),
-            gpa: "3.2"
-        }
-    ],
-
-    projects: [
-        {
-            projectName: "Job Portal System",
-            role: "Backend Developer",
-            technologies: ["Node.js", "Express", "Redis", "SQL Server"],
-            description: "Built job application system with AI scoring."
-        }
-    ],
-
-    createdAt: new Date(),
-    updatedAt: new Date()
-} as iResumeDetail;
 
 export const analyzeApplicationWithAI = async (ApplicationID: number, JobID: number, ResumeID: number) => {
+    const job = await getJobDetail(JobID);
+    if (!job) {
+        throw new Error(`Job ${JobID} not found`);
+    }
+    const cv = await getResumeDetailByCandidateId(ResumeID);
+    if (!cv) {
+        throw new Error(`CV not found for candidate ${ResumeID}`);
+    }
 
-    // const job = await getJobDetail(JobID);
-    // if (!job) {
-    //     return;
-    // }
-    // const cv = await getResumeDetailById(ResumeID);
-    const dataAI = await analyzeAI(mockJobDetail, mockResumeDetail);
-    console.log(dataAI);
-    await updateApplicationAI(ApplicationID, dataAI.MatchScore, dataAI.AI_Summary_Review);
-    
+    const dataAI = await analyzeAI(job, cv, ApplicationID);
+    if (!dataAI || typeof dataAI.MatchScore !== "number" ||dataAI.MatchScore < 0 ||
+        dataAI.MatchScore > 100 || !dataAI.AI_Summary_Review ) {
+        throw new Error(`Invalid AI result for Application ${ApplicationID}`);
+    }
 
+    await updateApplicationAI(ApplicationID, dataAI.MatchScore, dataAI.AI_Summary_Review || "");   
 }
 
 const updateApplicationAI = async (ApplicationID: number, MatchScore: number, AISummaryReview: string) => {
@@ -359,44 +261,25 @@ const applicationDetailQuery = `
         a.CreatedAt,
         a.MatchScore,
         a.AI_Summary_Review,
+        a.ResumeID,
         u.Email,
-
         c.CandidateID,
         c.FullName,
         c.Phone,
-        c.ExperienceYears,
-
-        r.Title,
-        r.ResumeFileUrl
+        c.ExperienceYears
     FROM JobApplications a
     JOIN Candidates c ON a.CandidateID = c.CandidateID
-    JOIN Resumes r ON c.CandidateID = r.CandidateID
     JOIN Users u ON u.UserID = c.CandidateID
     WHERE a.ApplicationID = ?
     LIMIT 1
     `;
-const skillsQuery = `
-    SELECT
-        cs.CandidateID,
-        s.SkillID,
-        s.SkillName
-    FROM CandidateSkills cs
-    JOIN Skills s ON cs.SkillID = s.SkillID
-    WHERE cs.CandidateID = ?
-    `;
+
 export const getApplicationDetail = async (ApplicationID: number): Promise<IJobApplication | null> => {
   
     const [rows]: any = await pool.query( applicationDetailQuery, [ApplicationID]);
     if (rows.length === 0) return null;
     const app = rows[0];
-  
-    const [skillsRows]: any = await pool.query(skillsQuery,[app.CandidateID]);
-  
-    const skills: Skill[] = skillsRows.map((row: any) => ({
-      SkillID: row.SkillID,
-      SkillName: row.SkillName
-    }));
-  
+
     const result: IJobApplication = {
         ApplicationID: app.ApplicationID,
     
@@ -409,11 +292,8 @@ export const getApplicationDetail = async (ApplicationID: number): Promise<IJobA
         CreatedAt: app.CreatedAt,
         MatchScore: app.MatchScore,
         AI_Summary_Review: app.AI_Summary_Review,
-    
-        Title: app.Title,
-        ResumeFileUrl: app.ResumeFileUrl,
-    
-        Skills: skills
+        ResumeID: app.ResumeID,
+        ResumeDetail: await getResumeDetailByCandidateId(app.CandidateID)
     };
     return result;
 };

@@ -17,14 +17,14 @@ export const getAllJobs = async (req: Request, res: Response, next: NextFunction
         };
         const cacheKey = `jobs_list:p${filters.Page}:l${filters.Limit}:c${filters.CategoryId || 'all'}:loc_${filters.Location || 'all'}:min${filters.MinSalary || 'all'}:max${filters.MaxSalary || 'all'}`;
         const cachedJobs = await redisClient.get(cacheKey);
-        if (cachedJobs) {
-            console.log("Lấy dữ liệu từ Redis cache");
-            return res.status(200).json({
-                success: true,
-                message: "Lấy tất cả job thành công",
-                data: JSON.parse(cachedJobs)
-            });
-        }
+        // if (cachedJobs) {
+        //     console.log("Lấy dữ liệu từ Redis cache");
+        //     return res.status(200).json({
+        //         success: true,
+        //         message: "Lấy tất cả job thành công",
+        //         data: JSON.parse(cachedJobs)
+        //     });
+        // }
         const jobs = await jobService.getAllJobs(filters);
         await redisClient.setEx(cacheKey, 3600, JSON.stringify(jobs));
         res.status(200).json({
@@ -36,6 +36,29 @@ export const getAllJobs = async (req: Request, res: Response, next: NextFunction
         next(error);
     }
 }
+export const getRecommendedJobs = async (req: Request, res: Response, next: NextFunction) => {
+    try {
+        const candidateId = req.user!.id;
+
+        const page = Number(req.query.page) || 1;
+        const limit = Number(req.query.limit) || 10;
+
+        const jobs = await jobService.getRecommendedJobs(
+            candidateId,
+            page,
+            limit
+        );
+
+        return res.json({
+            success: true,
+            message: "Lấy danh sách công việc được đề xuất thành công",
+            data: jobs
+        });
+
+    } catch (error) {
+        next(error);
+    }
+};
 export const getJobDetail = async (req: Request, res: Response, next: NextFunction) => {
     try {
         const jobId = Number(req.params.id);
@@ -101,6 +124,16 @@ export const createJob = async (req: Request, res: Response, next: NextFunction)
             ExperienceRequired: experienceRequired,
             ExpiredDate: expiredDate
         }
+        const rawTextForAi = `
+            Chức danh công việc: ${title}.
+            Địa điểm làm việc: ${location}.
+            Hình thức làm việc: ${jobType}.
+            Yêu cầu số năm kinh nghiệm: ${experienceRequired} năm.
+            Từ khóa kỹ năng (Tags): ${tags.join(", ")}.
+            Mô tả chi tiết: ${description}.
+            Yêu cầu chuyên môn: ${requirements}.
+            Phúc lợi và quyền lợi: ${benefits.join(", ")}.
+        `.replace(/\s+/g, ' ').trim();
         const jobDetailPayload: IJobDetailPayload = {
             Description: description,
             Requirements: requirements,
@@ -108,16 +141,19 @@ export const createJob = async (req: Request, res: Response, next: NextFunction)
             Benefits: benefits,
             Tags: tags,
             InterviewProcess: interviewProcess,
-            RawTextForAi: `${title} ${description} ${requirements} ${benefits.join(" ")} ${tags.join(" ")}`
+            RawTextForAi: rawTextForAi
         };
 
         const jobId = await jobService.createJob(jobPayload, jobDetailPayload);
-        await clearJobsListCache();
+        jobService.processJobVector(jobId, jobDetailPayload.RawTextForAi).catch(err => {
+            console.error(`[AI-BACKGROUND] Lỗi khi nạp Vector cho Job ID: ${jobId}`, err);
+        });
         res.status(201).json({ 
             success: true,
             message: "Tạo công việc thành công",
             data: jobId
-         });
+        });
+        
 
     } catch (error) {
         next(error);
@@ -150,6 +186,10 @@ export const updateJob = async (req: Request, res: Response, next: NextFunction)
         const isOwner = await jobService.isJobOwner(employerId, jobId);
         if (!isOwner) {
             throw new AppError('Bạn không phải là người tạo là công việc này', 403)
+        }
+        const isPending = await jobService.isJobPending(jobId);
+        if (!isPending) {
+            throw new AppError('Chỉ được phép chỉnh sửa công việc đang ở trạng thái chờ duyệt', 400)
         }
         const { title, location, salaryMin, salaryMax, jobType, quantity, description, workingSchedule, requirements, benefits, tags, interviewProcess } = req.body;
 
@@ -207,6 +247,22 @@ export const getJobOfMe = async (req: Request, res: Response, next: NextFunction
             success: true,
             message: "Lấy công việc của bạn thành công",
             data: jobs
+        });
+    } catch (error) {
+        next(error);
+    }
+}
+
+export const changeStatusJob = async (req: Request, res: Response, next: NextFunction) => {
+    try {
+        const jobId = parseInt(req.params.id.toString());
+        // const adminId = parseInt(req.user!.id.toString());
+        const { status } = req.body;
+        await jobService.changeStatusJob(jobId, status);
+        await clearJobsListCache();
+        res.status(200).json({
+            success: true,
+            message: "Thay đổi trạng thái công việc thành công"
         });
     } catch (error) {
         next(error);

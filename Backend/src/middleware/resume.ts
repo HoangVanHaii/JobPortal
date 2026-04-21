@@ -1,4 +1,4 @@
-import { body,param } from "express-validator";
+import { body, param } from "express-validator";
 
 export const buildResumeValidation = [
     body('title')
@@ -31,7 +31,6 @@ export const buildResumeValidation = [
         .isArray().withMessage("Dự án cá nhân phải là một mảng (Array)")
 ];
 
-
 export const generateSummaryValidation = [
     body().custom((value) => {
         if (!value.skills && !value.experience && !value.education) {
@@ -41,8 +40,10 @@ export const generateSummaryValidation = [
     })
 ];
 
-export const ResumeDetailIDValidation = [
-    param('mongoId')
+// Đã đổi tên và sửa logic kiểm tra ID
+export const ResumeIdValidation = [
+    param('resumeId')
         .notEmpty().withMessage("Sếp quên truyền ID của CV rồi!")
-        .isMongoId().withMessage("Mã CV không hợp lệ (Không đúng chuẩn định dạng của MongoDB)!")
+        .isInt({ gt: 0 }).withMessage("Mã CV không hợp lệ (Phải là một số nguyên dương)!")
+        .toInt() // Tự động ép kiểu sang số nguyên cho Controller dùng luôn
 ];

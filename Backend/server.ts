@@ -34,7 +34,7 @@ setupSocket(io);
 app.use(cors());
 app.use(express.json());
 
-app.use("/api/employer/company", companyRouter);
+app.use("/api/company", companyRouter);
 app.use("/api/employers", employerRouter);
 app.use("/api/jobs", jobRouter);
 app.use('/api/users', userRouter);

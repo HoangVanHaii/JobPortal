@@ -1,5 +1,7 @@
 import { PoolConnection } from "mysql2/promise";
 import pool from "../config/database";
+import { generateEmbedding } from "./searchAi";
+import { pineconeIndex } from "../config/pinecone";
 import { IJobPayload, IJob, IJobFilters, IJobDetailPayload, IJobDetail, IInterviewRound } from "../interface/job";
 import { JobDetailModel } from "../model/job";
 import { generateAndStoreVector } from '../utils/ai';
@@ -45,6 +47,27 @@ export const createJob = async (job: IJobPayload, jobDetail: IJobDetailPayload) 
         throw error;
     }
 }
+export const processJobVector = async (jobId: number, rawTextForAi: string) => {
+    try {
+        const vector = await generateEmbedding(rawTextForAi);
+        await pineconeIndex.upsert({
+            records: [
+                {
+                    id: jobId.toString(),
+                    values: vector,
+                    metadata: {
+                        type: "job",
+                        jobId
+                    }
+                }
+            ]
+        });
+
+        console.log(`[AI-LOG] Đã index thành công Job ID: ${jobId}`);
+    } catch (error) {
+        console.error(`[AI-ERROR] Job ID ${jobId}:`, error);
+    }
+};
 export const mergeJob = async(jobIds: number[], rows: any) => {
     const mongoDetails = await JobDetailModel.find({
         mysqlJobID: { $in: jobIds }
@@ -63,11 +86,11 @@ export const getAllJobs = async (filters: IJobFilters) => {
     const offset = (Page - 1) * Limit;
     const queryParams: any[] = [];
     
-    let query = `SELECT j.JobID, j.Title, j.Location, j.CreatedAt, c.CompanyName, c.LogoUrl AS CompanyLogo 
+    let query = `SELECT j.JobID, j.Title, j.Location, j.CreatedAt, c.CompanyName, c.LogoUrl AS CompanyLogo, j.Status
         FROM jobs j
         JOIN employers e ON j.EmployerID = e.EmployerID
         JOIN companies c ON e.CompanyID = c.CompanyID
-        WHERE j.ExpiredDate > NOW()`;
+        WHERE j.ExpiredDate > NOW() AND j.Status = 'Approved'`;
     if (CategoryId) {
         query += " AND j.CategoryID = ?";
         queryParams.push(CategoryId);
@@ -89,8 +112,37 @@ export const getAllJobs = async (filters: IJobFilters) => {
 
     return finalJobList as IJob[];
 }
+export const getRecommendedJobs = async (candidateId: number, page: number, limit: number) => {
+    const offset = (page - 1) * limit;
+
+    const [rows]: any = await pool.query(
+        `
+        SELECT 
+            j.JobID,
+            j.Title,
+            j.Location,
+            j.CreatedAt,
+            c.CompanyName,
+            c.LogoUrl AS CompanyLogo,
+            r.Score
+        FROM JobRecommendations r
+        JOIN jobs j ON r.JobID = j.JobID
+        JOIN employers e ON j.EmployerID = e.EmployerID
+        JOIN companies c ON e.CompanyID = c.CompanyID
+        WHERE r.CandidateID = ?
+        ORDER BY r.Score DESC
+        LIMIT ? OFFSET ?
+        `,
+        [candidateId, limit, offset]
+    );
+
+    const jobIds = rows.map((job: any) => job.JobID);
+    const finalJobList = await mergeJob(jobIds, rows);
+
+    return finalJobList;
+};
 export const getJobDetail = async (jobId: number) => {
-    const query = `SELECT j.JobID, j.Title, j.Location, j.CreatedAt, j.SalaryMin, j.SalaryMax, j.JobType, c.CompanyName, c.LogoUrl AS CompanyLogo, j.Quantity
+    const query = `SELECT j.JobID, j.Title, j.Location, j.CreatedAt, j.SalaryMin, j.SalaryMax, j.JobType, c.CompanyName, c.LogoUrl AS CompanyLogo, j.Status, j.Quantity
         FROM jobs j
         JOIN Employers e ON j.EmployerID = e.EmployerID
         JOIN Companies c ON e.CompanyID = c.CompanyID
@@ -114,6 +166,7 @@ export const getJobDetail = async (jobId: number) => {
         CreatedAt: job.CreatedAt!,
         CompanyName: job.CompanyName,
         CompanyLogo: job.CompanyLogo,
+        Status: job.Status,
         Quantity: rows[0].Quantity,
         SalaryMax: rows[0].SalaryMax,
         SalaryMin: rows[0].SalaryMin,
@@ -122,6 +175,7 @@ export const getJobDetail = async (jobId: number) => {
         WorkingSchedule: jobDetailDoc.workingSchedule || undefined,
         Requirements: jobDetailDoc.requirements,
         Benefits: jobDetailDoc.benefits,
+        RawTextForAi: jobDetailDoc.rowTextForAi || "",
         Tags: jobDetailDoc.tags,
         InterviewProcess: (jobDetailDoc.interviewProcess as unknown as IInterviewRound[]) || undefined
     }
@@ -208,7 +262,7 @@ export const getJobOfMe = async (page: number, limit: number) => {
     const offset = (page - 1) * limit;
     const queryParams: any[] = [];
 
-    let query = `SELECT j.JobID, j.Title, j.Location, j.CreatedAt, c.CompanyName, c.LogoUrl AS CompanyLogo 
+    let query = `SELECT j.JobID, j.Title, j.Location, j.CreatedAt, c.CompanyName, c.LogoUrl AS CompanyLogo, j.Status
         FROM jobs j
         JOIN employers e ON j.EmployerID = e.EmployerID
         JOIN companies c ON e.CompanyID = c.CompanyID
@@ -227,4 +281,47 @@ export const isJobOwner = async (employerId: number, jobId: number) => {
     const value = [employerId, jobId]
     const [rows]: any = await pool.query(query, value);
     return rows.length > 0;
+}
+
+export const getAllJobVectors = async () => {
+    const query = `
+        SELECT 
+            JobID, 
+            vectorID
+        FROM jobs 
+        WHERE ExpiredDate > NOW() 
+          AND vectorId IS NOT NULL
+    `;
+    const [rows]: any = await pool.query(query);
+    return rows;
+}
+export const getJobsByIds = async (jobIds: number[], placeholders: string) => {
+    const sql = `
+        SELECT j.JobID, j.Title, j.Location, j.CreatedAt, c.CompanyName, c.LogoUrl AS CompanyLogo, j.Status
+        FROM jobs j
+        JOIN employers e ON j.EmployerID = e.EmployerID
+        JOIN companies c ON e.CompanyID = c.CompanyID
+        WHERE j.JobID IN (${placeholders})
+        ORDER BY FIELD(j.JobID, ${placeholders})
+        LIMIT 5
+    `;
+    const [jobs]: any = await pool.query(sql, [...jobIds, ...jobIds]);
+    return jobs as IJob[];
+}
+export const getRowTextForAI = async (jobId: number) => {
+    const jobDetail = await JobDetailModel.findOne({ mysqlJobID: jobId }).select('rowTextForAi').lean();
+    return jobDetail?.rowTextForAi || "";
+}
+export const isJobPending = async (jobId: number) => {
+    const query = `SELECT Status FROM jobs WHERE JobID = ?`;
+    const [rows]: any = await pool.query(query, [jobId]);
+    if (rows.length === 0) {
+        throw new Error("Không tìm thấy công việc!");
+    }
+    return rows[0].Status === 'Pending';
+}
+export const changeStatusJob = async (jobId: number, newStatus: string) => {
+    const query = `UPDATE jobs set Status = ? WHERE JobID = ?`
+    await pool.query(query, [newStatus, jobId]);
+    return true;
 }

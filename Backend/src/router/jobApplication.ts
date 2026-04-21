@@ -9,7 +9,7 @@ router.post('/', authMiddleware, jobApplycationMiddleware.applyJobValidator, val
 router.put('/:ApplicationID/status', authMiddleware, jobApplycationMiddleware.updateStatusValidator, validateRequest, jobApplycationController.UpdateApplicationStatus);
 router.get('/ofme', authMiddleware, jobApplycationController.getSubmittedApplications);
 router.get('/job/:JobID', authMiddleware, isEmployer, jobApplycationMiddleware.JobIDValidator, validateRequest, jobApplycationController.getListApplicationByJobId);
-router.get('/:ApplicationID', authMiddleware, isEmployer, jobApplycationMiddleware.ApplicationIDValidator, jobApplycationController.getApplicationDetail);
+router.get('/:ApplicationID', authMiddleware, jobApplycationMiddleware.ApplicationIDValidator, jobApplycationController.getApplicationDetail);
 
 
 
