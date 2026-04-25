@@ -45,7 +45,7 @@ export const removeSavedJob = async (req: Request, res: Response, next: NextFunc
         next(error);
     }
 }
-export const getMySavedJobsController = async (req: Request, res: Response, next: NextFunction) => {
+export const getMySavedJobs = async (req: Request, res: Response, next: NextFunction) => {
     try {
         const userId = parseInt(req.user!.id.toString());
         const page = parseInt(req.query.page as string) || 1;
@@ -73,3 +73,18 @@ export const getMySavedJobsController = async (req: Request, res: Response, next
         next(error);
     }
 };
+
+export const isSavedJob = async (req: Request, res: Response, next: NextFunction) => {
+    try {
+        const userId = parseInt(req.user!.id.toString());
+        const jobId = parseInt(req.params.jobId.toString());
+        const isSaved = await savedJobService.isSavedJob(userId, jobId);
+        return res.status(200).json({
+            success: true,
+            message: "Kiểm tra trạng thái lưu tin thành công",
+            data: isSaved
+        });
+    } catch (error) {
+        next(error);
+    }
+}

@@ -125,4 +125,18 @@ export const logout = async (req: Request, res: Response, next: NextFunction) =>
     }   
 }
 
+export const getProfile = async (req: Request, res: Response, next: NextFunction) => {
+    try {
+        const userId = Number(req.user!.id);
+
+        const profileData = await userService.getProfileWithCache(userId);
+        return res.status(200).json({
+            success: true,
+            message: "Lấy thông tin hồ sơ thành công",
+            data: profileData
+        });
+    } catch (error) {
+        next(error);
+    }
+}
         

@@ -4,6 +4,31 @@ import { iResumeDetail } from "../interface/resume";
 import pool from "../config/database";
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY!);
 
+export const expandQuery = async (q: string): Promise<string> => {
+    try {
+        const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
+
+        const prompt = `Bạn là chuyên gia phân tích ý định tìm kiếm việc làm.
+        Nhiệm vụ: Chuyển câu lệnh tìm kiếm của người dùng thành một danh sách các từ khóa, kỹ năng và ngành nghề liên quan để tìm kiếm trong database.
+        
+        Quy tắc đặc biệt:
+        - Nếu người dùng tìm kiếm phủ định (ví dụ: "không phải code", "phi kỹ thuật"), hãy liệt kê các ngành nghề KHÔNG liên quan đến lập trình như: "Lao động phổ thông, Marketing, Nhân sự, F&B, Chăm sóc khách hàng, Làm vườn".
+        - Nếu người dùng tìm kiếm kỹ thuật, hãy mở rộng như bình thường.
+        
+        Từ khóa từ người dùng: "${q}"
+        
+        Chỉ trả về chuỗi các từ khóa mở rộng, cách nhau bằng dấu phẩy. Không giải thích gì thêm.`;
+
+        const result = await model.generateContent(prompt);
+        const expandedText = result.response.text();
+
+        // console.log(`[AI-Expansion] Gốc: ${q} -> Mở rộng: ${expandedText}`);
+        return expandedText || q;
+    } catch (error) {
+        console.error("Expand Query lỗi:", error);
+        return q;
+    }
+};
 export const generateEmbedding = async (text: string) => {
     try {
         const model = genAI.getGenerativeModel({ model: "gemini-embedding-001" });
@@ -16,24 +41,58 @@ export const generateEmbedding = async (text: string) => {
     }
 };
 export const searchJobsByAI = async (searchQuery: string, topK: number = 10) => {
-    try {
-        const queryVector = await generateEmbedding(searchQuery);
+    const expandedQuery = await expandQuery(searchQuery);
+    const queryVector = await generateEmbedding(expandedQuery);
 
-        const queryResponse = await pineconeIndex.query({
-            vector: queryVector,
-            topK: topK,
-            includeMetadata: true, 
-        });
+    const queryResponse = await pineconeIndex.query({
+        vector: queryVector,
+        topK,
+        includeMetadata: true,
+    });
 
-        const matchedResults = queryResponse.matches.map((match: any) => ({
+    const MIN_SCORE = 0.65;
+    // console.log("Pinecone raw matches:", queryResponse.matches);
+    return queryResponse.matches
+        .filter((m: any) => (m.score || 0) >= MIN_SCORE)
+        .map((match: any) => ({
             jobId: Number(match.id),
-            score: match.score || 0
+            score: match.score || 0,
+            metadata: match.metadata || {}
+        }));
+};
+export const rerankWithAI = async (query: string, jobs: any[]) => {
+    try {
+        const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
+
+        const jobContext = jobs.map((j, i) => ({
+            index: i,
+            title: j.Title,
+            tags: j.tags,
+            requirements: j.requirements.substring(0, 300)
         }));
 
-        return matchedResults;
+        const prompt = `Bạn là chuyên gia lọc hồ sơ. Người dùng tìm kiếm: "${query}".
+        Dựa vào danh sách JSON dưới đây:
+        ${JSON.stringify(jobContext)}
+
+        NHIỆM VỤ:
+        1. Chỉ giữ lại những công việc thực sự liên quan đến ngành nghề/kỹ năng trong từ khóa tìm kiếm.
+        2. LOẠI BỎ các công việc khác ngành (Ví dụ: Search "code" thì loại bỏ "cây xanh", "thực phẩm", "tuyển dụng").
+        3. Trả về mảng JSON chứa index của các job phù hợp, ưu tiên job xịn nhất lên đầu.
+        
+        TRẢ VỀ DUY NHẤT MẢNG JSON. Ví dụ: [0, 1]`;
+
+        const result = await model.generateContent(prompt);
+        const text = result.response.text();
+        const match = text.match(/\[(\s*\d+\s*,?)*\]/);
+
+        if (!match) return jobs;
+
+        const sortedIndexes: number[] = JSON.parse(match[0]);
+        return sortedIndexes.map(idx => jobs[idx]).filter(Boolean);
+
     } catch (error) {
-        console.error("[AI-SEARCH-ERROR] Lỗi khi tìm kiếm vector:", error);
-        throw error;
+        return jobs; 
     }
 };
 export const generateJobInsights = async (searchQuery: string, jobText: string) => {

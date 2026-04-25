@@ -7,5 +7,6 @@ const router = express.Router();
 
 router.get('/conversation', authMiddleware, messageController.getConversations);
 router.get('/chat-history/:otherUserId', authMiddleware, getHistoryValidation, validateRequest, messageController.getChatHistory);
+router.get('/unread-count', authMiddleware, messageController.getCountUnreadMessages);
 
 export default router;

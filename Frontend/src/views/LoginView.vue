@@ -44,10 +44,10 @@ const handleSubmit = async () => {
         message.value = useAuth.message || 'Đăng nhập thành công!';
     }
     if(useAuth.isLogin && useAuth.role === 'Employer') {
-        router.push('/home/employer');
+        router.push('/home');
     }
     if(useAuth.isLogin && useAuth.role === 'Candidate') {
-        router.push('/home/candidate');
+        router.push('/home');
     }
     
 }

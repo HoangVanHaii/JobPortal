@@ -1,43 +1,70 @@
 import pool from "../config/database";
 import { mergeJob } from "./job";
 
-export const isSavedJob = async (userId: number, jobId: number): Promise<boolean> => {
-    const query = "SELECT 1 FROM savedJobs WHERE userId = ? AND jobId = ? LIMIT 1";
-    const [rows]: any = await pool.query(query, [userId, jobId]);
-    return rows.length > 0;
-}
 
-export const savedJob = async (userId: number, jobId: number) => {
-    const query = "INSERT INTO savedJobs (userId, jobId) VALUES (?, ?)";
-    const [result] = await pool.query(query, [userId, jobId]);
+export const savedJob = async (candidateId: number, jobId: number) => {
+    const query = "INSERT INTO savedJobs (CandidateID, JobID) VALUES (?, ?)";
+    const [result] = await pool.query(query, [candidateId, jobId]);
     return result;
 }
 
-export const removeSavedJob = async (userId: number, jobId: number) => {
-    const query = "DELETE FROM savedJobs WHERE userId = ? AND jobId = ?";
-    const [result] = await pool.query(query, [userId, jobId]);
+export const removeSavedJob = async (candidateId: number, jobId: number) => {
+    const query = "DELETE FROM savedJobs WHERE CandidateID = ? AND JobID = ?";
+    const [result] = await pool.query(query, [candidateId, jobId]);
     return result;
 }
-export const getSavedJobs = async (userId: number, page: number, limit: number) => {
+export const getSavedJobs = async (candidateId: number, page: number, limit: number) => {
     const offset = (page - 1) * limit;
-    const query = `
+
+    let total: number | undefined;
+    let totalPages: number | undefined;
+
+    if (page === 1) {
+        const countQuery = `
+            SELECT COUNT(*) as totalItems
+            FROM savedJobs sj
+            JOIN jobs j ON sj.jobId = j.JobID
+            WHERE sj.CandidateID = ?
+        `;
+        const [countResult]: any = await pool.query(countQuery, [candidateId]);
+
+        total = countResult[0].totalItems;
+        totalPages = Math.ceil((total || 0) / limit);
+    }
+
+    const dataQuery = `
         SELECT 
             j.JobID, j.Title, j.Location, j.CreatedAt, j.SalaryMin, j.SalaryMax,
             c.CompanyName, c.LogoUrl AS CompanyLogo,
-            sj.createdAt AS SavedAt 
+            sj.SavedAt AS SavedAt 
         FROM savedJobs sj
         JOIN jobs j ON sj.jobId = j.JobID
         JOIN employers e ON j.EmployerID = e.EmployerID
         JOIN companies c ON e.CompanyID = c.CompanyID
-        WHERE sj.userId = ?
-        ORDER BY sj.createdAt DESC
+        WHERE sj.CandidateID = ?
+        ORDER BY sj.SavedAt DESC
         LIMIT ? OFFSET ?
     `;
-    const values = [userId, limit, offset];
-    const [rows]: any = await pool.query(query, values);
-    if (rows.length === 0) return [];
+
+    const [rows]: any = await pool.query(dataQuery, [candidateId, limit, offset]);
+
+    if (rows.length === 0) {
+        return {
+            items: [],
+            ...(total !== undefined && { total, totalPages })
+        };
+    }
+
     const jobIds = rows.map((job: any) => job.JobID);
     const finalJobList = await mergeJob(jobIds, rows);
 
-    return finalJobList;
+    return {
+        items: finalJobList,
+        ...(total !== undefined && { total, totalPages })
+    };
+};
+export const isSavedJob = async (candidateId: number, jobId: number): Promise<boolean> => {
+    const query = "SELECT 1 FROM savedJobs WHERE CandidateID = ? AND JobID = ? LIMIT 1";
+    const [rows]: any = await pool.query(query, [candidateId, jobId]);
+    return rows.length > 0;
 }

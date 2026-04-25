@@ -29,3 +29,16 @@ export const getChatHistory = async (req: Request, res: Response, next: NextFunc
         next(error);
     }
 }
+export const getCountUnreadMessages = async (req: Request, res: Response, next: NextFunction) => {
+    try {
+        const myId = parseInt(req.user!.id.toString());
+        const count = await messageService.getCountUnreadMessages(myId);
+        return res.status(200).json({
+            success: true,
+            message: "Lấy số lượng tin nhắn chưa đọc thành công",
+            data: count
+        });
+    } catch (error) {
+        next(error);
+    }
+}

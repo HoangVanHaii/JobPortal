@@ -15,15 +15,16 @@ export const getAllJobs = async (req: Request, res: Response, next: NextFunction
             MinSalary: req.query.minSalary ? parseInt(req.query.minSalary as string) : undefined,
             MaxSalary: req.query.maxSalary ? parseInt(req.query.maxSalary as string) : undefined,
         };
+        // console.log("Received filters:", filters);
         const cacheKey = `jobs_list:p${filters.Page}:l${filters.Limit}:c${filters.CategoryId || 'all'}:loc_${filters.Location || 'all'}:min${filters.MinSalary || 'all'}:max${filters.MaxSalary || 'all'}`;
         const cachedJobs = await redisClient.get(cacheKey);
         if (cachedJobs) {
             console.log("Lấy dữ liệu từ Redis cache");
-            return res.status(200).json({
-                success: true,
-                message: "Lấy tất cả job thành công",
-                data: JSON.parse(cachedJobs)
-            });
+            // return res.status(200).json({
+            //     success: true,
+            //     message: "Lấy tất cả job thành công",
+            //     data: JSON.parse(cachedJobs)
+            // });
         }
         const jobs = await jobService.getAllJobs(filters);
         await redisClient.setEx(cacheKey, 3600, JSON.stringify(jobs));
@@ -125,14 +126,18 @@ export const createJob = async (req: Request, res: Response, next: NextFunction)
             ExpiredDate: expiredDate
         }
         const rawTextForAi = `
-            Chức danh công việc: ${title}.
-            Địa điểm làm việc: ${location}.
-            Hình thức làm việc: ${jobType}.
-            Yêu cầu số năm kinh nghiệm: ${experienceRequired} năm.
-            Từ khóa kỹ năng (Tags): ${tags.join(", ")}.
-            Mô tả chi tiết: ${description}.
-            Yêu cầu chuyên môn: ${requirements}.
-            Phúc lợi và quyền lợi: ${benefits.join(", ")}.
+            ${title}
+            Location: ${location}
+            Type: ${jobType}
+            Experience: ${experienceRequired} years
+
+            Skills: ${tags.join(", ")}
+
+            Description:
+            ${description}
+
+            Requirements:
+            ${requirements}
         `.replace(/\s+/g, ' ').trim();
         const jobDetailPayload: IJobDetailPayload = {
             Description: description,
@@ -145,7 +150,7 @@ export const createJob = async (req: Request, res: Response, next: NextFunction)
         };
 
         const jobId = await jobService.createJob(jobPayload, jobDetailPayload);
-        jobService.processJobVector(jobId, jobDetailPayload.RawTextForAi).catch(err => {
+        jobService.processJobVector(jobId, jobPayload, jobDetailPayload, jobDetailPayload.RawTextForAi).catch(err => {
             console.error(`[AI-BACKGROUND] Lỗi khi nạp Vector cho Job ID: ${jobId}`, err);
         });
         res.status(201).json({ 
@@ -263,6 +268,29 @@ export const changeStatusJob = async (req: Request, res: Response, next: NextFun
         res.status(200).json({
             success: true,
             message: "Thay đổi trạng thái công việc thành công"
+        });
+    } catch (error) {
+        next(error);
+    }
+}
+export const getAllCategories = async (req: Request, res: Response, next: NextFunction) => {
+    try {
+        const cacheKey = `job_categories_list`;
+        const cachedCategories = await redisClient.get(cacheKey);
+        if (cachedCategories) {
+            console.log("Lấy danh sách category từ Redis cache");
+            return res.status(200).json({
+                success: true,
+                message: "Lấy danh sách category thành công",
+                data: JSON.parse(cachedCategories)
+            });
+        }
+        const categories = await jobService.getAllCatagories();
+        await redisClient.setEx(cacheKey, 3600, JSON.stringify(categories));
+        res.status(200).json({
+            success: true,
+            message: "Lấy danh sách category thành công",
+            data: categories
         });
     } catch (error) {
         next(error);

@@ -1,0 +1,303 @@
+<script setup lang="ts">
+import Header from '../components/Header.vue';
+import SearchBar from '../components/SearchBar.vue';
+import Chat from '../components/Chat.vue';
+import { ref, reactive, computed, watch, onMounted } from 'vue';
+import { formatSalary, formatDate } from '../utils/format';
+import { storeToRefs } from 'pinia';
+import { useJobStore } from '../stores/job'; 
+import { useRouter } from 'vue-router';
+import { fetchProvinces } from '../services/province';
+import { 
+    MapPin, Calendar, CircleDollarSign, Filter, ChevronDown, 
+    Briefcase, ChevronLeft, ChevronRight, 
+    LayoutGrid, Megaphone, Headset, Monitor, Home, Calculator // Đã import thêm các icon mới ở đây
+} from 'lucide-vue-next';
+
+const router = useRouter();
+const jobStore = useJobStore();
+const provinces = ref<{ name: string; code: number }[]>([]);
+const filterType = ref<'location' | 'category' | 'salary'>('location');
+const { jobs, totalPages, loading } = storeToRefs(jobStore);
+
+const filterState = reactive({
+    page: 1,
+    limit: 9,
+    categoryId: undefined as number | undefined,
+    location: '',
+    minSalary: undefined as number | undefined,
+    maxSalary: undefined as number | undefined,
+});
+
+const quickOptions = computed(() => {
+    if (filterType.value === 'location') {
+        return [
+        { label: 'Tất cả', value: '' },
+        { label: 'Hà Nội', value: 'Hà Nội' },
+        { label: 'Hồ Chí Minh', value: 'Hồ Chí Minh' },
+        { label: 'Đà Nẵng', value: 'Đà Nẵng' },
+        ];
+    } else if (filterType.value === 'category') {
+        const dynamicCategories = jobStore.listCategoryJobs.map(cat => ({
+            label: cat.CategoryName,
+            value: cat.CategoryID
+        }));
+        
+        return [
+        { label: 'Tất cả', value: undefined },
+        ...dynamicCategories
+        ];
+    } else {
+        return [
+        { label: 'Tất cả', value: { min: undefined, max: undefined } },
+        { label: 'Dưới 10tr', value: { min: 0, max: 10 } },
+        { label: '10 - 20tr', value: { min: 10, max: 20 } },
+        { label: 'Trên 20tr', value: { min: 20, max: 999 } },
+        ];
+    }
+});
+
+const selectQuickOption = (option: any) => {
+    if (filterType.value === 'location') filterState.location = option.value;
+    if (filterType.value === 'category') filterState.categoryId = option.value;
+    if (filterType.value === 'salary') {
+        filterState.minSalary = option.value.min;
+        filterState.maxSalary = option.value.max;
+    }
+};
+
+const goToPage = (page: number) => {
+    if (page >= 1 && page <= totalPages.value) {
+        filterState.page = page; 
+        window.scrollTo({ top: 500, behavior: 'smooth' });
+    }
+};
+
+watch(() => filterState, (newState, oldState) => {
+    if (
+    newState.location !== oldState.location ||
+    newState.categoryId !== oldState.categoryId ||
+    newState.minSalary !== oldState.minSalary ||
+    newState.maxSalary !== oldState.maxSalary
+    ) {
+        filterState.page = 1;
+    }
+    
+    jobStore.fetchJobs(filterState);
+},
+{ deep: true }
+);
+
+onMounted(() => {
+    fetchProvinces(provinces.value);
+    jobStore.fetchJobs(filterState);
+    jobStore.fetchCategories();
+});
+
+const isActiveOption = (opt: any) => {
+    if (filterType.value === 'location') {
+        return filterState.location === opt.value;
+    }
+    if (filterType.value === 'category') {
+        return filterState.categoryId === opt.value;
+    }
+    if (filterType.value === 'salary') {
+        return filterState.minSalary === opt.value.min && filterState.maxSalary === opt.value.max;
+    }
+    return false;
+};
+
+const viewJobDetail = (jobId: any) => {
+    router.push({ name: 'job-detail', params: { id: jobId } });
+};
+
+// DATA DANH SÁCH NGÀNH NGHỀ MỚI THÊM
+const popularCategories = [
+    { name: 'Việc làm Quản trị kinh doanh', icon: CircleDollarSign },
+    { name: 'Việc làm Marketing - PR', icon: Megaphone },
+    { name: 'Việc làm Chăm sóc khách hàng', icon: Headset },
+    { name: 'Việc làm IT phần mềm', icon: Monitor },
+    { name: 'Việc làm KD bất động sản', icon: Home },
+    { name: 'Việc làm Kế toán - Kiểm toán', icon: Calculator },
+];
+</script>
+
+<template>
+    <Header />
+    <SearchBar />
+    
+    <div class="max-w-6xl mx-auto mt-4 px-4">
+        <div class="bg-white p-3 rounded-lg shadow-sm border border-gray-100 flex items-center gap-6 flex-wrap">   
+            <div class="relative group border rounded-md px-3 py-1.5 flex items-center gap-2 cursor-pointer bg-gray-50 hover:bg-white transition-all">
+                <Filter class="w-4 h-4 text-gray-500" />
+                <span class="text-sm text-gray-600">Lọc theo:</span>
+                <select 
+                    v-model="filterType" 
+                    class="font-bold text-sm bg-transparent outline-none cursor-pointer pr-4 appearance-none"
+                    >
+                    <option value="location">Địa điểm</option>
+                    <option value="category">Thể loại</option>
+                    <option value="salary">Mức lương</option>
+                </select>
+                <ChevronDown class="w-4 h-4 text-gray-400 absolute right-2 pointer-events-none" />
+            </div>
+        
+            <div class="flex items-center gap-8 flex-1 overflow-x-auto no-scrollbar">
+                
+                <button 
+                    v-for="(opt, index) in quickOptions" 
+                    :key="index"
+                    @click="selectQuickOption(opt)"
+                    class="px-5 py-1.5 rounded-full text-sm transition-all border shrink-0 whitespace-nowrap"
+                    :class="[
+                    isActiveOption(opt) 
+                    ? 'bg-blue-600 text-white border-blue-600 shadow-sm' 
+                    : 'bg-gray-100 text-gray-700 border-transparent hover:bg-gray-200'
+                    ]"
+                    >
+                    {{ opt.label }}
+                </button>
+                
+                <div v-if="filterType === 'location'" class="relative flex-shrink-0 ml-2">
+                    <select 
+                        v-model="filterState.location"
+                        class="pl-4 pr-8 py-1.5 rounded-full text-sm transition-all outline-none cursor-pointer appearance-none border whitespace-nowrap font-medium"
+                        :class="[
+                        !['', 'Hà Nội', 'Hồ Chí Minh', 'Đà Nẵng'].includes(filterState.location)
+                        ? 'bg-blue-600 text-white border-blue-600 shadow-sm'
+                        : 'bg-gray-100 text-gray-700 border-transparent hover:bg-gray-200'
+                        ]"
+                        >
+                        <option value="" disabled hidden>Tỉnh thành khác...</option>
+                        <option 
+                            v-for="prov in provinces.filter(p => !['Hà Nội', 'Hồ Chí Minh', 'Đà Nẵng'].includes(p.name))" 
+                            :key="prov.code" 
+                            :value="prov.name"
+                            class="text-gray-800 bg-white"
+                            >
+                            {{ prov.name }}
+                        </option>
+                    </select>
+                
+                    <ChevronDown 
+                    class="w-4 h-4 absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none transition-colors" 
+                    :class="!['', 'Hà Nội', 'Hồ Chí Minh', 'Đà Nẵng'].includes(filterState.location) ? 'text-white' : 'text-gray-500'"
+                    />
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="max-w-6xl mx-auto mt-8 px-4 pb-20">
+        
+        <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-6">     
+            <div class="flex items-center gap-2 border-b pb-4 mb-6">
+                <div class="bg-blue-100 p-1.5 rounded-full">
+                    <Briefcase class="w-5 h-5 text-blue-600" />
+                </div>
+                <h2 class="font-bold text-gray-800 uppercase">Việc làm thương hiệu</h2>
+            </div>
+            
+            <div v-if="loading" class="flex justify-center items-center py-12">
+                <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+                <span class="ml-3 text-blue-600 font-medium">Đang tải dữ liệu...</span>
+            </div>
+            
+            <div v-else-if="jobs.length === 0" class="text-center py-12 text-gray-500">
+                Không tìm thấy công việc nào phù hợp với tiêu chí lọc.
+            </div>
+            
+            <div v-else class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 p-4 bg-gray-50 rounded-lg">
+                <div v-for="job in jobs" :key="job.JobID"  @click="viewJobDetail(job.JobID)"
+                    class="flex items-start gap-3 bg-white border border-gray-200 p-3 rounded-sm hover:shadow-md transition-shadow cursor-pointer group">
+                    
+                    <div class="flex-shrink-0">
+                        <div class="w-[85px] h-[85px] rounded-full bg-[#d9d9d9] border border-blue-400 flex items-center justify-center overflow-hidden p-1">
+                            <img :src="job.CompanyLogo || '/src/assets/bg-login.jpg'" class="w-full h-full object-cover mix-blend-multiply"/>
+                        </div>
+                    </div>
+                    
+                    <div class="flex-1 flex flex-col min-w-0">
+                        <h3 class="text-[#5161e2] font-semibold text-[15px] leading-snug truncate group-hover:underline">
+                            {{ job.Title }}
+                        </h3>
+                        <p class="text-[#666] text-[13px] truncate mt-0.5" :title="job.CompanyName">{{ job.CompanyName }}</p>
+                        
+                        <div class="flex items-center gap-1 text-[#888] text-[12px] mt-1">
+                            <MapPin class="w-3.5 h-3.5 text-blue-400" />
+                            <span>{{ job.Location }}</span>
+                        </div>
+                        
+                        <div class="flex items-center justify-between mt-auto pt-2">
+                            <div class="flex items-center gap-1 text-[#999] text-[12px]">
+                                <Calendar class="w-3.5 h-3.5" />
+                                <span>{{ formatDate(job.CreatedAt) }}</span>
+                            </div>
+                            <div class="flex items-center gap-1 text-[#d866d3] font-medium text-[13px]">
+                                <CircleDollarSign class="w-4 h-4" />
+                                <span>{{ formatSalary(job.SalaryMin, job.SalaryMax) }}</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        
+            <div v-if="totalPages > 1 && !loading" class="flex flex-col items-center mt-10">
+                <div class="flex gap-4 items-center">
+                    <button 
+                        @click="goToPage(filterState.page - 1)"
+                        :disabled="filterState.page === 1"
+                        class="p-2 border rounded-full hover:bg-gray-100 disabled:opacity-30 disabled:cursor-not-allowed transition-all"
+                        >
+                        <ChevronLeft class="w-4 h-4" />
+                    </button>
+                    
+                    <div class="flex gap-2">
+                        <button 
+                            v-for="page in totalPages" 
+                            :key="page"
+                            @click="goToPage(page)"
+                            class="h-1.5 rounded transition-all duration-300"
+                            :class="[filterState.page === page ? 'w-10 bg-blue-600' : 'w-6 bg-gray-200 hover:bg-gray-300']"
+                        ></button>
+                    </div>
+                    
+                    <button 
+                        @click="goToPage(filterState.page + 1)"
+                        :disabled="filterState.page === totalPages"
+                        class="p-2 border rounded-full hover:bg-gray-100 disabled:opacity-30 disabled:cursor-not-allowed transition-all"
+                        >
+                        <ChevronRight class="w-4 h-4" />
+                    </button>
+                </div>
+                <p class="text-xs text-gray-400 mt-3">Trang {{ filterState.page }} / {{ totalPages }}</p>
+            </div>
+        </div>
+        <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-6 mt-8">
+            <div class="flex items-center gap-2 border-b pb-4 mb-6">
+                <div class="bg-blue-100 p-1.5 rounded-full">
+                    <LayoutGrid class="w-5 h-5 text-blue-600" />
+                </div>
+                <h2 class="font-bold text-gray-800 uppercase">Việc làm theo ngành nghề</h2>
+            </div>
+
+            <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
+                <div 
+                    v-for="(cat, index) in popularCategories" 
+                    :key="index"
+                    class="bg-[#f8f9fa] border border-transparent hover:border-blue-200 hover:shadow-md transition-all cursor-pointer rounded-xl py-8 px-4 flex flex-col items-center justify-center gap-4 group"
+                >
+                    <div class="w-16 h-16 bg-white rounded-full shadow-sm flex items-center justify-center text-blue-600 group-hover:bg-blue-600 group-hover:text-white transition-colors duration-300">
+                        <component :is="cat.icon" class="w-8 h-8" />
+                    </div>
+                    
+                    <span class="text-[15px] font-medium text-gray-700 group-hover:text-blue-600 text-center transition-colors">
+                        {{ cat.name }}
+                    </span>
+                </div>
+            </div>
+        </div>
+        </div>
+    
+    <Chat />
+</template>

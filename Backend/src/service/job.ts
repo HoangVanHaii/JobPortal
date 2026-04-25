@@ -41,7 +41,7 @@ export const createJob = async (job: IJobPayload, jobDetail: IJobDetailPayload) 
         throw error;
     }
 }
-export const processJobVector = async (jobId: number, rawTextForAi: string) => {
+export const processJobVector = async (jobId: number, job: IJobPayload, jobDetail: IJobDetailPayload, rawTextForAi: string) => {
     try {
         const vector = await generateEmbedding(rawTextForAi);
         await pineconeIndex.upsert({
@@ -51,7 +51,13 @@ export const processJobVector = async (jobId: number, rawTextForAi: string) => {
                     values: vector,
                     metadata: {
                         type: "job",
-                        jobId
+                        jobId,
+                        location: job.Location,
+                        title: job.Title,
+                        description: jobDetail.Description,
+                        requirements: jobDetail.Requirements,
+                        tags: jobDetail.Tags,
+                        benefits: jobDetail.Benefits.join(', '),
                     }
                 }
             ]
@@ -78,33 +84,60 @@ export const mergeJob = async(jobIds: number[], rows: any) => {
 export const getAllJobs = async (filters: IJobFilters) => {
     const { Page, Limit, CategoryId, Location, MinSalary, MaxSalary } = filters;
     const offset = (Page - 1) * Limit;
-    const queryParams: any[] = [];
-    
-    let query = `SELECT j.JobID, j.Title, j.Location, j.CreatedAt, c.CompanyName, c.LogoUrl AS CompanyLogo, j.Status
+
+    let whereClause = `WHERE j.ExpiredDate > NOW() AND j.Status = 'Approved'`;
+    const baseParams: any[] = [];
+
+    if (CategoryId) {
+        whereClause += " AND j.CategoryID = ?";
+        baseParams.push(CategoryId);
+    }
+    if (Location) {
+        whereClause += " AND j.Location LIKE ?";
+        baseParams.push(`%${Location}%`);
+    }
+    if (MinSalary && MaxSalary) {
+        whereClause += " AND j.SalaryMin >= ? AND j.SalaryMax <= ?";
+        baseParams.push(MinSalary, MaxSalary);
+    }
+
+    let total: number | undefined = undefined;
+    let totalPages: number | undefined = undefined;
+
+    if (Page === 1) {
+        const countQuery = `
+            SELECT COUNT(*) as totalItems
+            FROM jobs j
+            JOIN employers e ON j.EmployerID = e.EmployerID
+            JOIN companies c ON e.CompanyID = c.CompanyID
+            ${whereClause}
+        `;
+        const [countResult]: any = await pool.query(countQuery, baseParams);
+        total = countResult[0].totalItems;
+        totalPages = Math.ceil( (total || 0 ) / Limit);
+    }
+
+    // nếu có score thì order by score, không thì order by createdAt
+    const dataQuery = `
+        SELECT j.JobID, j.Title, j.Location, j.CreatedAt, j.SalaryMin, j.SalaryMax, j.JobType, c.CompanyName, c.LogoUrl AS CompanyLogo, j.Status, r.Score
         FROM jobs j
         JOIN employers e ON j.EmployerID = e.EmployerID
         JOIN companies c ON e.CompanyID = c.CompanyID
-        WHERE j.ExpiredDate > NOW() AND j.Status = 'Approved'`;
-    if (CategoryId) {
-        query += " AND j.CategoryID = ?";
-        queryParams.push(CategoryId);
-    }
-    if (Location) {
-        query += " AND j.Location LIKE ?";
-        queryParams.push(`%${Location}%`);
-    }
-    if (MinSalary && MaxSalary) {
-        query += " AND j.SalaryMin >= ? AND j.SalaryMax <= ?";
-        queryParams.push(MinSalary, MaxSalary);
-    }
-    query += " ORDER BY j.CreatedAt DESC LIMIT ? OFFSET ?";
-    queryParams.push(Limit, offset);
-    const [rows]: any = await pool.query(query, queryParams);
+        LEFT JOIN JobRecommendations r ON j.JobID = r.JobID
+        ${whereClause}
+        ORDER BY CASE WHEN r.Score IS NOT NULL THEN r.Score END DESC, j.CreatedAt DESC
+        LIMIT ? OFFSET ?
+    `;
+    const dataParams = [...baseParams, Limit, offset];
+    const [rows]: any = await pool.query(dataQuery, dataParams);
 
-    const jobIds = rows.map((job: any) => job.JobID)
-    const finalJobList = await mergeJob(jobIds, rows)
+    const jobIds = rows.map((job: any) => job.JobID);
+    const finalJobList = await mergeJob(jobIds, rows);
 
-    return finalJobList as IJob[];
+    return {
+        items: finalJobList as IJob[],
+        ...(total !== undefined && { total, totalPages })
+    };
 }
 export const getRecommendedJobs = async (candidateId: number, page: number, limit: number) => {
     const offset = (page - 1) * limit;
@@ -136,7 +169,7 @@ export const getRecommendedJobs = async (candidateId: number, page: number, limi
     return finalJobList;
 };
 export const getJobDetail = async (jobId: number) => {
-    const query = `SELECT j.JobID, j.Title, j.Location, j.CreatedAt, j.SalaryMin, j.SalaryMax, j.JobType, c.CompanyName, c.LogoUrl AS CompanyLogo, j.Status, j.Quantity
+    const query = `SELECT j.JobID, j.Title, j.Location, j.CreatedAt, j.SalaryMin, j.SalaryMax, j.JobType, c.CompanyName, c.LogoUrl AS CompanyLogo, j.Status, j.Quantity, e.EmployerID
         FROM jobs j
         JOIN Employers e ON j.EmployerID = e.EmployerID
         JOIN Companies c ON e.CompanyID = c.CompanyID
@@ -155,6 +188,7 @@ export const getJobDetail = async (jobId: number) => {
     const job: IJob = rows[0];
     const jobDetail: IJobDetail = {
         JobID: job.JobID!,
+        EmployerID: rows[0].EmployerID,
         Title: job.Title,
         Location: job.Location,
         CreatedAt: job.CreatedAt!,
@@ -275,18 +309,40 @@ export const getAllJobVectors = async () => {
     return rows;
 }
 export const getJobsByIds = async (jobIds: number[], placeholders: string) => {
-    const sql = `
-        SELECT j.JobID, j.Title, j.Location, j.CreatedAt, c.CompanyName, c.LogoUrl AS CompanyLogo, j.Status
-        FROM jobs j
-        JOIN employers e ON j.EmployerID = e.EmployerID
-        JOIN companies c ON e.CompanyID = c.CompanyID
-        WHERE j.JobID IN (${placeholders})
-        ORDER BY FIELD(j.JobID, ${placeholders})
-        LIMIT 5
-    `;
-    const [jobs]: any = await pool.query(sql, [...jobIds, ...jobIds]);
-    return jobs as IJob[];
+    if (!jobIds.length) return [];
+    const [mysqlResult, mongoDetails] = await Promise.all([
+        pool.query(`
+            SELECT j.JobID, j.Title, j.Location, j.CreatedAt, c.CompanyName, c.LogoUrl AS CompanyLogo, j.Status
+            FROM jobs j
+            JOIN employers e ON j.EmployerID = e.EmployerID
+            JOIN companies c ON e.CompanyID = c.CompanyID
+            WHERE j.JobID IN (${placeholders})
+            ORDER BY FIELD(j.JobID, ${placeholders})
+            LIMIT 20
+        `, [...jobIds, ...jobIds]),
+
+        JobDetailModel.find({
+            mysqlJobID: { $in: jobIds }
+        }).select('mysqlJobID description requirements tags').lean()
+    ]);
+
+    const jobs = mysqlResult[0] as any[];
+    const detailMap = new Map(mongoDetails.map(d => [d.mysqlJobID, d]));
+
+    const finalJobList = jobs.map((job) => {
+        const detail: any = detailMap.get(job.JobID);
+        return {
+            ...job,
+            description: cleanText(detail?.description || ""),
+            requirements: detail?.requirements || "",
+            tags: detail?.tags || []
+        };
+    });
+
+    return finalJobList;
 }
+const cleanText = (text: string) => text.replace(/<\/?[^>]+(>|$)/g, "");
+
 export const getRowTextForAI = async (jobId: number) => {
     const jobDetail = await JobDetailModel.findOne({ mysqlJobID: jobId }).select('rowTextForAi').lean();
     return jobDetail?.rowTextForAi || "";
@@ -304,3 +360,20 @@ export const changeStatusJob = async (jobId: number, newStatus: string) => {
     await pool.query(query, [newStatus, jobId]);
     return true;
 }
+export const getAllCatagories = async () => {
+    const query = `SELECT CategoryID, CategoryName FROM jobcategories`;
+    const [rows]: any = await pool.query(query);
+    return rows;
+}   
+export const searchJobsByKeyword = async (q: string) => {
+    const sql = `
+        SELECT JobID
+        FROM jobs
+        WHERE Title LIKE ?
+           OR Location LIKE ?
+        LIMIT 20
+    `;
+
+    const [rows] = await pool.query(sql, [`%${q}%`, `%${q}%`]);
+    return rows as any[];
+};
