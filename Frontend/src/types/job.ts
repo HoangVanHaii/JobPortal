@@ -7,9 +7,13 @@ export interface IJob {
     CompanyLogo: string;
     Description: string;
     Status: string;
+    SalaryMin?: number;
+    SalaryMax?: number;
+    JobType?: string;
 }
 export interface IJobDetail {
     JobID: number;
+    EmployerID: number;
     Title: string;
     Location: string;
     CreatedAt: Date;

@@ -1,4 +1,5 @@
 import axios from "axios";
+import { disconnectSocket } from "./socket";
 const api = axios.create({
     baseURL: import.meta.env.REACT_APP_API_BASE_URL || 'http://localhost:3000/api',
 });
@@ -13,7 +14,7 @@ api.interceptors.request.use((config) => {
     return Promise.reject(error);
 });
 api.interceptors.response.use(
-    (response) => response, 
+    (response) => response,
     async (error) => {
         const originalRequest = error.config;
         if (error.response?.status === 401 && originalRequest.url.includes('/login')) {
@@ -23,9 +24,9 @@ api.interceptors.response.use(
             originalRequest._retry = true;
             try {
                 const refreshToken = localStorage.getItem('refreshToken');
-                
+
                 if (!refreshToken) {
-                    handleLogout();
+                    // handleLogout();
                     return Promise.reject(error);
                 }
                 const res = await axios.post(`${api.defaults.baseURL}/users/refresh-token`, {
@@ -51,6 +52,7 @@ const handleLogout = () => {
     localStorage.removeItem('accessToken');
     localStorage.removeItem('refreshToken');
     window.location.href = '/login';
+    disconnectSocket();
 };
 
 export default api;

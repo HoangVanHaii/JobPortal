@@ -5,6 +5,8 @@ import RegisterView from '../views/RegisterView.vue'
 import VerifyOtp from '../components/VerifyOtp.vue'
 import PasswordForm from '../components/PasswordForm.vue'
 import LoginView from '../views/LoginView.vue'
+import HomeView from '../views/HomeView.vue'
+import JobDetailView from '../views/JobDetailView.vue'
 import Footer from '../components/Footer.vue'
 import LoginSectionView from '../views/LoginSectionView.vue'
 import RegisterSectionView from '../views/RegisterSectionView.vue'
@@ -22,11 +24,14 @@ import ApplicationsView from '../views/ApplicationsView.vue'
 //
 
 const routes: Array<RouteRecordRaw> = [
-    { path: '/', redirect: '/register' },
+    { path: '/', redirect: '/home' },
     { path: '/request-otp', name: 'request-otp', component: RegisterView },
     { path: '/verify-otp', name: 'verify-otp', component: VerifyOtp },
     { path: '/register', name: 'register', component: PasswordForm },
     { path: '/login', name: 'login', component: LoginView },
+    { path: '/home', name: 'home', component: HomeView },
+    { path: '/job-detail/:id', name: 'job-detail', component: JobDetailView }
+
     { path: '/footer', name: 'footer', component: Footer },
     { path: '/login-section', name: 'login-section', component: LoginSectionView },
     { path: '/register-section', name: 'register-section', component: RegisterSectionView },

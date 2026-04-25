@@ -6,8 +6,9 @@ import { validateRequest } from '../middleware/validateRequest';
 
 const router = express.Router();
 
-// router.get('/saved-job', authMiddleware, savedJobController.)
-router.post('/saved-job', authMiddleware, jobIdParamValidation, validateRequest, savedJobController.savedJob);
-router.delete('/remove-saved-job', authMiddleware, jobIdParamValidation, validateRequest, savedJobController.removeSavedJob);
+router.get('/', authMiddleware, savedJobController.getMySavedJobs);
+router.get('/:jobId', authMiddleware, jobIdParamValidation, validateRequest, savedJobController.isSavedJob);
+router.post('/:jobId', authMiddleware, jobIdParamValidation, validateRequest, savedJobController.savedJob);
+router.delete('/unsave-job/:jobId', authMiddleware, jobIdParamValidation, validateRequest, savedJobController.removeSavedJob);
 
 export default router;
