@@ -1,6 +1,6 @@
 import { ref } from 'vue';
 import { defineStore } from 'pinia';
-import { createJob, deleteJob, getJobDetail, getJobOfMe } from '../services/job';
+import { createJob, deleteJob, getJobOfMe } from '../services/job';
 import type{ IListJob, IJob, IJobDetail } from '../types/job';
 import { getAllCategories, getAllJobs, getJobDetail, getMySavedJobs, isSavedJob, savedJob, searchJobs, unsaveJob } from '../services/job';
 
@@ -114,16 +114,13 @@ export const useJobStore = defineStore('job',() => {
     }
     const fetchJobSearch = async (query: string) => {
         try {
-            loading.value = true;
             errorLog.value = '';
             const response = await searchJobs(query);
             listJobSearch.value = response.data || [];
         } catch (err: any) {
             console.error("Lỗi khi tìm kiếm job:", err.response?.data);
             error.value = err.response?.data?.message || 'Đã xảy ra lỗi khi tìm kiếm job';
-        } finally {
-            loading.value = false;
-        }
+        } 
     }
 
     const createJobStore = async (job: any) => {

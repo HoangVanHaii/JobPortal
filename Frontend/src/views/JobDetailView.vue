@@ -8,10 +8,16 @@ import { MapPin, Calendar, CircleDollarSign, Send, Heart, ChevronRight, MessageC
 import { useRouter, useRoute } from 'vue-router';
 import { useJobStore } from '../stores/job';
 import { formatSalary, formatTextToList } from '../utils/format';
+import Loading from '../components/Loading.vue';
+import Notify from '../components/Notify.vue';
+const showNotify = ref(false);
+const messageNotify = ref('');
+const isSuccessNotify = ref(true);
 const jobStore = useJobStore();
 const job = ref(jobStore.jobDetail);
 const router = useRouter();
 const route = useRoute();
+
 const activeChat = ref<boolean>(false);
 const toggleChat = () => {
     activeChat.value = !activeChat.value;
@@ -56,7 +62,13 @@ const toggleSave = async () => {
 </script>
 
 <template>
-    <Header />
+    <Loading v-if="jobStore.loading"/>
+    <Notify  
+        v-if="showNotify" 
+        :message="messageNotify" 
+        :isSuccess="isSuccessNotify" 
+        @close="showNotify = false"
+    />
     <SearchBar />
     <div v-if="job" class="bg-[#f3f4f6] min-h-screen pb-12">
         <div class="max-w-5xl mx-auto px-4 pt-6">

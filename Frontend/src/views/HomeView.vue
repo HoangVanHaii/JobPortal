@@ -8,6 +8,8 @@ import { storeToRefs } from 'pinia';
 import { useJobStore } from '../stores/job'; 
 import { useRouter } from 'vue-router';
 import { fetchProvinces } from '../services/province';
+import Notify from '../components/Notify.vue';
+import Loading from '../components/Loading.vue';
 import { 
     MapPin, Calendar, CircleDollarSign, Filter, ChevronDown, 
     Briefcase, ChevronLeft, ChevronRight, 
@@ -19,6 +21,9 @@ const jobStore = useJobStore();
 const provinces = ref<{ name: string; code: number }[]>([]);
 const filterType = ref<'location' | 'category' | 'salary'>('location');
 const { jobs, totalPages, loading } = storeToRefs(jobStore);
+const showNotify = ref(false);
+const messageNotify = ref('');
+const isSuccessNotify = ref(true);
 
 const filterState = reactive({
     page: 1,
@@ -88,11 +93,22 @@ watch(() => filterState, (newState, oldState) => {
 { deep: true }
 );
 
-onMounted(() => {
-    fetchProvinces(provinces.value);
-    jobStore.fetchJobs(filterState);
+onMounted(async () => {
+
+    const state = window.history.state;
+    if(state && state.loginSuccess) {
+        showNotify.value = true;
+        messageNotify.value = 'Đăng nhập thành công!';
+        isSuccessNotify.value = true;
+        window.history.replaceState({}, '');
+    }
+    
+     fetchProvinces(provinces.value);
+    await jobStore.fetchJobs(filterState);
     jobStore.fetchCategories();
+    
 });
+
 
 const isActiveOption = (opt: any) => {
     if (filterType.value === 'location') {
@@ -123,7 +139,13 @@ const popularCategories = [
 </script>
 
 <template>
-    <Header />
+    <Notify  
+        v-if="showNotify" 
+        :message="messageNotify" 
+        :isSuccess="isSuccessNotify" 
+        @close="showNotify = false"
+    />
+    <Loading v-if="jobStore.loading"/>
     <SearchBar />
     
     <div class="max-w-6xl mx-auto mt-4 px-4">

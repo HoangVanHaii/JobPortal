@@ -50,10 +50,6 @@ export const getJobOfMe = async (page: number = 1, limit: number = 6) => {
     });
     return response.data;
 }
-export const getJobDetail = async (jobID: number) => {
-    const response = await api.get(`/jobs/${jobID}`);
-    return response.data;
-}
 export const deleteJob = async (jobID: number) => {
     const response = await api.delete(`/jobs/soft-delete-job/${jobID}`);
     return response.data;

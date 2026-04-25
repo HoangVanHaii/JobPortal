@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onMounted, onUnmounted, ref } from 'vue';
+import {  onMounted, onUnmounted, ref } from 'vue';
 const props = defineProps({
     message: {
         type: String,

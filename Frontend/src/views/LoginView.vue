@@ -52,12 +52,22 @@ const handleSubmit = async () => {
         durationNotify.value = 2000;
         message.value = useAuth.message || 'Có lỗi xảy ra!';
     } else {
-        router.push({ 
-            path: '/request-otp', 
+        if(useAuth.role === 'Employer') {
+            router.push({ 
+            path: '/create-job', 
             state: { 
                 loginSuccess: true
             } 
         });
+        } else {
+            router.push({ 
+                path: '/home', 
+                state: { 
+                    loginSuccess: true
+                } 
+            });
+        }
+        
         // message.value = useAuth.message || 'Đăng nhập thành công!';
     }
     // if(useAuth.isLogin && useAuth.role === 'Employer') {
