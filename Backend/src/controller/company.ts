@@ -14,18 +14,19 @@ export const CreateCompany = async (req: Request, res: Response, next: NextFunct
 
     try {
         await connection.beginTransaction();
+        const { CompanyName, CompanyDescription, TaxCode, Industry, Website, ContactEmail, City, Position } = req.body;
 
-        const companyData: ICreateCompany = req.body;
-        const position = req.body.Position;
+        const companyData: ICreateCompany = { CompanyName, CompanyDescription, TaxCode, Industry, Website, ContactEmail, City, CreatedBy: Number(req.user?.id), BusinessLicenseUrl: '' as any };
+
         if (req.files) {
-            const uploaded = await CompanyService.handleCompanyUploads(req.files as Express.Multer.File[]);
+            const uploaded = await CompanyService.handleCompanyUploads(req.files as any);
             uploadedAssets.push(...uploaded.publicIds);
             Object.assign(companyData, uploaded.data);
         }
-    
+
         companyData.CreatedBy = req.user!.id;
         const CompanyID = await CompanyService.CreateCompany(connection, companyData);
-        const EmployerID = await createEmployer(connection, { EmployerID: req.user!.id, CompanyID: CompanyID, Position: position, ApprovalStatus: "Approved" } as IEmployer);
+        const EmployerID = await createEmployer(connection, { EmployerID: req.user!.id, CompanyID: CompanyID, Position: Position, ApprovalStatus: "Approved" } as IEmployer);
 
         await connection.commit();
         const cacheKeyAll = `company:role:${req.user?.role || "Candidate"}:all`;
@@ -49,7 +50,19 @@ export const CreateCompany = async (req: Request, res: Response, next: NextFunct
         connection.release();
     }
 }
+export const getCompanyOfMe = async (req: Request, res: Response, next: NextFunction) => {
+    try {
+        const data = await CompanyService.getCompanyOfMe(req.user!.id);
+        return res.status(200).json({
+            success: true,
+            message: "Lấy thông tin công ty của bạn thành công",
+            data: data
+        });
 
+    } catch (error) {
+        next(error);
+    }
+}
 export const UpdateCompany = async (req: Request, res: Response, next: NextFunction) => {
     try {
         const companyData: IUpdateCompany = req.body;

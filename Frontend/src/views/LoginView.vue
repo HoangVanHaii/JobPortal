@@ -1,8 +1,9 @@
 <script setup lang ="ts">
-import { computed, ref } from 'vue';
+import { computed, onMounted, ref } from 'vue';
 import { useAuthStore } from '../stores/auth';
 import { useRoute, useRouter } from 'vue-router';
 import bgLogin from '../assets/bg-login.jpg';
+import Notify from '../components/Notify.vue';
 
 const router = useRouter();
 const route = useRoute();
@@ -11,6 +12,10 @@ const useAuth = useAuthStore();
 const email = ref<string>('');
 const password = ref<string>(''); 
 const checked = ref<boolean>(false);
+const messageNotify = ref<string>('');
+const showNotify = ref<boolean>(false);
+const isSuccessNotify = ref<boolean>(false);
+const durationNotify = ref<number>(2000);
 
 const role = computed(() => route.query.role as string || 'Candidate');
 
@@ -33,22 +38,34 @@ const validateForm = () => {
     }
     return true;
 }
+
+
 const handleSubmit = async () => {
 
     if(!validateForm()) return;
     message.value = '';
     await useAuth.loginStore(email.value, password.value);
     if (useAuth.error) {
+        showNotify.value = true;
+        messageNotify.value = 'Đăng nhập thất bại!';
+        isSuccessNotify.value = false;
+        durationNotify.value = 2000;
         message.value = useAuth.message || 'Có lỗi xảy ra!';
     } else {
-        message.value = useAuth.message || 'Đăng nhập thành công!';
+        router.push({ 
+            path: '/request-otp', 
+            state: { 
+                loginSuccess: true
+            } 
+        });
+        // message.value = useAuth.message || 'Đăng nhập thành công!';
     }
-    if(useAuth.isLogin && useAuth.role === 'Employer') {
-        router.push('/home');
-    }
-    if(useAuth.isLogin && useAuth.role === 'Candidate') {
-        router.push('/home');
-    }
+    // if(useAuth.isLogin && useAuth.role === 'Employer') {
+    //     router.push('/home/employer');
+    // }
+    // if(useAuth.isLogin && useAuth.role === 'Candidate') {
+    //     router.push('/home/candidate');
+    // }
     
 }
 const goToRegister = () => {
@@ -56,9 +73,27 @@ const goToRegister = () => {
     router.push({ path: '/request-otp' });
 
 }
+onMounted(() => {
+    const state = window.history.state;
+    if(state && state.registerSuccess) {
+        showNotify.value = true;
+        messageNotify.value = 'Đăng ký tài khoản thành công!';
+        isSuccessNotify.value = true;
+        durationNotify.value = 2000;
+        email.value = state.email || '';
+        window.history.replaceState({}, '');
+    }
+})
 </script>
 
 <template>
+    <Notify 
+        v-if="showNotify"
+        :message="messageNotify"
+        :isSuccess="isSuccessNotify"
+        :duration="durationNotify"
+        @close="showNotify = false"
+    />
     <div class="flex flex-col justify-center items-center min-h-screen bg-gray-100 bg-cover bg-center p-4" :style="{ backgroundImage: `url(${bgLogin})` }">
         <div class="flex flex-col md:flex-row justify-between items-center w-full max-w-5xl p-10 rounded-xl gap-10">
             <div class="w-full md:w-1/2 text-blue-700">

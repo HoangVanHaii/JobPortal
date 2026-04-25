@@ -1,23 +1,9 @@
-import { Document } from 'mongoose';
-import { Multer } from 'multer';
-
-export interface iResume {
-    ResumeID?: number;         
-    CandidateID: number;
-    Title: string;
-    ResumeFileUrl?: string;   
-    VectorID?: string;        
-    Summary?: string;
-    IsAnalyzed?: boolean;
-    CreatedAt?: Date;
-}
-
-export interface iResumeDetail extends Document {
-    resumeId: number;
-    // candidateId: number;    
+export interface iResumeDetail{
+    resumeId?: number;
     title?: string;         
     summary?: string;
-    AvatarUrl?: string;
+    avatarUrl?: string | File;
+   
     skills?: {
         skillId?: number;    
         skillName: string;
@@ -27,8 +13,8 @@ export interface iResumeDetail extends Document {
     experience?: {         
         companyName: string;
         position: string;
-        startDate: Date;
-        endDate?: Date;
+        startDate: Date | string;
+        endDate?: Date | string;
         isCurrent: boolean;
         description?: string;
     }[];
@@ -37,8 +23,8 @@ export interface iResumeDetail extends Document {
         institution: string;
         degree: string;
         major: string;
-        startDate: Date;
-        endDate?: Date;
+        startDate: Date | string;
+        endDate?: Date | string;
         gpa?: string;
     }[];
     
@@ -53,3 +39,18 @@ export interface iResumeDetail extends Document {
     createdAt?: Date;
     updatedAt?: Date;
 }
+  
+  interface FormProject {
+    projectName: string;
+    role: string;
+    techString: string; 
+    link?: string;
+    description?: string;
+  }
+  
+  export interface FormState extends Omit<iResumeDetail, 'projects'> {
+    skills: NonNullable<iResumeDetail['skills']>;
+    experience: NonNullable<iResumeDetail['experience']>;
+    education: NonNullable<iResumeDetail['education']>;
+    projects: FormProject[];
+  }

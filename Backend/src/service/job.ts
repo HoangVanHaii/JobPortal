@@ -2,8 +2,9 @@ import { PoolConnection } from "mysql2/promise";
 import pool from "../config/database";
 import { generateEmbedding } from "./searchAi";
 import { pineconeIndex } from "../config/pinecone";
-import { IJobPayload, IJob, IJobFilters, IJobDetailPayload, IJobDetail, IInterviewRound } from "../interface/job";
+import { IJobPayload, IListJob, IJob, IJobFilters, IJobDetailPayload, IJobDetail, IInterviewRound } from "../interface/job";
 import { JobDetailModel } from "../model/job";
+import { generateAndStoreVector } from '../utils/ai';
 
 export const insertJobToMySQL = async (pool: PoolConnection, job: IJobPayload) => {
     const jobQuery = "INSERT INTO jobs (EmployerID, CategoryID, Title, Quantity, SalaryMin, SalaryMax, Location, JobType, ExperienceRequired, ExpiredDate) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
@@ -31,6 +32,11 @@ export const createJob = async (job: IJobPayload, jobDetail: IJobDetailPayload) 
         const newMysqlId = await insertJobToMySQL(connection, job);
         await insertJobDetailToMongoDB(jobDetail, newMysqlId);     
        
+        if (jobDetail.RawTextForAi) {
+            const vectorId = await generateAndStoreVector(jobDetail.RawTextForAi, 'job', newMysqlId);
+            await connection.query("UPDATE jobs SET VectorID = ? WHERE JobID = ?", [vectorId, newMysqlId]);
+        }
+
         await connection.commit();
         connection.release();
         return newMysqlId;
@@ -243,6 +249,8 @@ export const updateJob = async (payload: any) => {
         mysqlValues.push(payload.Quantity);
     }
 
+    const currentJobId = payload.JobID || payload.JobId;
+
     if (mysqlSetFields.length > 0) {
         const mysqlQuery = `UPDATE jobs SET ${mysqlSetFields.join(', ')} WHERE JobID = ?`;
         mysqlValues.push(payload.JobID);
@@ -268,6 +276,19 @@ export const updateJob = async (payload: any) => {
             { $set: mongoUpdateData }
         );
     }
+
+    const titleText = payload.Title || '';
+    const descText = payload.Description || '';
+    const reqText = payload.Requirements || '';
+    const benefitsText = payload.Benefits ? payload.Benefits.join(" ") : '';
+    const tagsText = payload.Tags ? payload.Tags.join(" ") : '';
+    
+    const rawTextForAi = `${titleText} ${descText} ${reqText} ${benefitsText} ${tagsText}`.trim();
+
+    if (rawTextForAi) {
+        await generateAndStoreVector(rawTextForAi, 'job', currentJobId);
+    }
+
     return true;
 }
 
@@ -275,11 +296,30 @@ export const getJobOfMe = async (page: number, limit: number) => {
     const offset = (page - 1) * limit;
     const queryParams: any[] = [];
 
-    let query = `SELECT j.JobID, j.Title, j.Location, j.CreatedAt, c.CompanyName, c.LogoUrl AS CompanyLogo, j.Status
+    let query = `
+        SELECT 
+            j.JobID, 
+            j.Title, 
+            j.Location, 
+            j.CreatedAt, 
+            c.CompanyName, 
+            c.LogoUrl AS CompanyLogo, 
+            j.Status,
+            COUNT(ja.ApplicationID) AS ApplicationCount
         FROM jobs j
         JOIN employers e ON j.EmployerID = e.EmployerID
         JOIN companies c ON e.CompanyID = c.CompanyID
-        ORDER BY j.CreatedAt DESC LIMIT ? OFFSET ?`;
+        LEFT JOIN jobApplications ja ON j.JobID = ja.JobID
+        GROUP BY 
+            j.JobID, 
+            j.Title, 
+            j.Location, 
+            j.CreatedAt, 
+            c.CompanyName, 
+            c.LogoUrl, 
+            j.Status
+        ORDER BY j.CreatedAt DESC 
+        LIMIT ? OFFSET ?`;
 
     queryParams.push(limit, offset);
     const [rows]: any = await pool.query(query, queryParams);
@@ -287,11 +327,11 @@ export const getJobOfMe = async (page: number, limit: number) => {
     const jobIds = rows.map((job: any) => job.JobID);
     const finalJobList = await mergeJob(jobIds, rows)
 
-    return finalJobList as IJob[];
+    return finalJobList as IListJob[];
 }
 export const isJobOwner = async (employerId: number, jobId: number) => {
     const query = `SELECT EmployerID FROM jobs WHERE JobID = ? AND EmployerID = ?`;
-    const value = [employerId, jobId]
+    const value = [jobId, employerId]
     const [rows]: any = await pool.query(query, value);
     return rows.length > 0;
 }

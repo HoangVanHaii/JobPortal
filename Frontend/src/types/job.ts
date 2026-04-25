@@ -68,3 +68,17 @@ export interface IJobFilters {
     MinSalary?: number;
     MaxSalary?: number;
 }
+
+
+//
+export interface IListJob {
+    JobID?: number;
+    Title: string;
+    Location: string;
+    CreatedAt?: Date;
+    CompanyName: string;
+    CompanyLogo: string;
+    Description: string;
+    Status: string;
+    ApplicationCount: number;   
+}

@@ -1,16 +1,38 @@
-import { body,param } from "express-validator";
+import { body, param } from "express-validator";
+
+
+const parseJsonArray = (value: any) => {
+    if (typeof value === 'string') {
+        try {
+            return JSON.parse(value);
+        } catch (error) {
+            return value;
+        }
+    }
+    return value;
+};
 
 export const buildResumeValidation = [
     body('title')
         .trim()
-        .notEmpty().withMessage("Sếp ơi, CV thì phải có cái tên (title) để mốt dễ phân biệt chứ!"),
-    
+        .notEmpty().withMessage("Vui lòng điền title!")
+        .isLength({ min: 10, max: 255 }).withMessage("Title phải từ 10 đến 255 ký tự!"),
+        
     body('summary')
         .optional()
         .trim(),
+        
+    body('AvatarUrl').custom((value, { req }) => {
+            if (!req.file) {
+                throw new Error('Vui lòng upload ảnh đại diện cho CV!');
+            }
+            return true;
+        }),
 
+    // 2. Thêm customSanitizer vào trước các field mảng
     body('skills')
         .optional()
+        .customSanitizer(parseJsonArray) // <--- Parse chuỗi thành Array ở bước này
         .isArray().withMessage("Danh sách kỹ năng phải là một mảng (Array)"),
     
     body('skills.*.skillName')
@@ -20,18 +42,19 @@ export const buildResumeValidation = [
 
     body('experience')
         .optional()
+        .customSanitizer(parseJsonArray)
         .isArray().withMessage("Kinh nghiệm làm việc phải là một mảng (Array)"),
     
     body('education')
         .optional()
+        .customSanitizer(parseJsonArray)
         .isArray().withMessage("Học vấn phải là một mảng (Array)"),
 
     body('projects')
         .optional()
+        .customSanitizer(parseJsonArray)
         .isArray().withMessage("Dự án cá nhân phải là một mảng (Array)")
 ];
-
-
 export const generateSummaryValidation = [
     body().custom((value) => {
         if (!value.skills && !value.experience && !value.education) {
@@ -41,8 +64,10 @@ export const generateSummaryValidation = [
     })
 ];
 
-export const ResumeDetailIDValidation = [
-    param('mongoId')
+// Đã đổi tên và sửa logic kiểm tra ID
+export const ResumeIdValidation = [
+    param('resumeId')
         .notEmpty().withMessage("Sếp quên truyền ID của CV rồi!")
-        .isMongoId().withMessage("Mã CV không hợp lệ (Không đúng chuẩn định dạng của MongoDB)!")
+        .isInt({ gt: 0 }).withMessage("Mã CV không hợp lệ (Phải là một số nguyên dương)!")
+        .toInt() // Tự động ép kiểu sang số nguyên cho Controller dùng luôn
 ];

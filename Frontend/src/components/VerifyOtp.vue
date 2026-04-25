@@ -132,7 +132,7 @@ const handleSuccess = () => {
                 <p class="text-lm">Nhập mã xác thực <span class="text-red-500">*</span></p>
                 <div class="flex my-[15px]">
                     <input
-                        v-for="(digit, index) in inputOtp"
+                        v-for="(_, index) in inputOtp"
                         :key="index"
                         v-model="inputOtp[index]"
                         ref="inputRef"

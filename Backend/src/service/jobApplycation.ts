@@ -4,7 +4,7 @@ import { AppError } from "../utils/appError";
 import { ResultSetHeader } from "mysql2";
 import { IJobApplication, IJobApplicationList } from "../interface/jobApplication";
 import { getJobDetail } from "./job";
-import { getResumeDetailByCandidateId } from "./resume";
+import { getResumeDetailByResumeID } from "./resume";
 import { analyzeAI } from "../ai/jobApplications";
 
 //
@@ -14,7 +14,7 @@ export const analyzeApplicationWithAI = async (ApplicationID: number, JobID: num
     if (!job) {
         throw new Error(`Job ${JobID} not found`);
     }
-    const cv = await getResumeDetailByCandidateId(ResumeID);
+    const cv = await getResumeDetailByResumeID(ResumeID);
     if (!cv) {
         throw new Error(`CV not found for candidate ${ResumeID}`);
     }
@@ -196,6 +196,7 @@ export const getApplicationByJobId = async (JobID: number, page: number, limit: 
             app.ApplicationID,
             can.FullName,
             can.ExperienceYears,
+            can.AvatarUrl,
             app.MatchScore,
             app.Status,
             app.CreatedAt
@@ -279,7 +280,6 @@ export const getApplicationDetail = async (ApplicationID: number): Promise<IJobA
     const [rows]: any = await pool.query( applicationDetailQuery, [ApplicationID]);
     if (rows.length === 0) return null;
     const app = rows[0];
-
     const result: IJobApplication = {
         ApplicationID: app.ApplicationID,
     
@@ -293,7 +293,7 @@ export const getApplicationDetail = async (ApplicationID: number): Promise<IJobA
         MatchScore: app.MatchScore,
         AI_Summary_Review: app.AI_Summary_Review,
         ResumeID: app.ResumeID,
-        ResumeDetail: await getResumeDetailByCandidateId(app.CandidateID)
+        ResumeDetail: await getResumeDetailByResumeID(app.ResumeID)
     };
     return result;
 };

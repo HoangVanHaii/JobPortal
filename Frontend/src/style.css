@@ -49,11 +49,10 @@
     filter: invert(1) brightness(2);
   }
 }
-
 body {
-  margin: 0;
-}
-
+    margin: 0;
+    padding: 0;
+  }
 h1,
 h2 {
   font-family: var(--heading);
@@ -156,7 +155,7 @@ code {
   }
 }
 
-#app {
+/* #app {
   width: 1126px;
   max-width: 100%;
   margin: 0 auto;
@@ -166,7 +165,7 @@ code {
   display: flex;
   flex-direction: column;
   box-sizing: border-box;
-}
+} */
 
 #center {
   display: flex;

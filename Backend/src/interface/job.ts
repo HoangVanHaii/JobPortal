@@ -11,6 +11,17 @@ export interface IJob {
     SalaryMax?: number;
     JobType?: string;
 }
+export interface IListJob {
+    JobID?: number;
+    Title: string;
+    Location: string;
+    CreatedAt?: Date;
+    CompanyName: string;
+    CompanyLogo: string;
+    Description: string;
+    Status: string;
+    ApplicationCount: number;   
+}
 export interface IJobDetail {
     JobID: number;
     EmployerID: number;

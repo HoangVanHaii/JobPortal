@@ -1,5 +1,4 @@
-import { iResumeDetail } from "./resume";
-
+import type{ iResumeDetail } from "./resume";
 export interface IJobApplication {
     ApplicationID: number;
     FullName: string;
@@ -16,7 +15,8 @@ export interface IJobApplication {
     ResumeDetail: iResumeDetail | null;
   }
   
-export interface IJobApplicationList {
+ 
+  export interface IJobApplicationList {
     ApplicationID: number;
     FullName: string;
     ExperienceYears: number;

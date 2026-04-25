@@ -112,9 +112,9 @@ export const generateJobInsights = async (searchQuery: string, jobText: string) 
 };
 
 
-
+///////////////////////////////////////
 export const RecommendJobsByAI = async (resume: iResumeDetail) => {
-    await deleteJobRecommentCandidate(resume.candidateId);
+    await deleteJobRecommentCandidate(1);
 
     const resumeText = buildResumeText(resume);
     const resumeVector = await generateEmbedding(resumeText);
@@ -123,7 +123,7 @@ export const RecommendJobsByAI = async (resume: iResumeDetail) => {
         topK: 20,
         includeMetadata: true, 
     });
-    const candidateId = resume.candidateId;
+    const candidateId = 1;
     saveJobRecommendations(candidateId, queryResponse.matches);
 
 }

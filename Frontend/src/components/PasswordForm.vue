@@ -1,11 +1,13 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue';
 import { useAuthStore } from '../stores/auth';
-
+import Notify from './Notify.vue';
 const password = ref<string>('');
 const confirmPassword = ref<string>('');
 const useAuth = useAuthStore();
-    
+const messageNotify = ref<string>('');
+const showNotify = ref<boolean>(false);
+const isSuccessNotify = ref<boolean>(false);
 const isValid = computed(() => {
     return password.value.length >= 6 && password.value === confirmPassword.value;
 })
@@ -29,6 +31,7 @@ const handleSubmit = async () => {
     const role = sessionStorage.getItem('role');
     await useAuth.registerStore(verifyToken, password.value, role || 'Candidate');
     if (!useAuth.error) {
+        
         successForm();
     }
     
@@ -43,6 +46,13 @@ const successForm = () => {
 </script>
 
 <template>
+    <Notify 
+        v-if="showNotify"
+        :message="messageNotify"
+        :isSuccess="isSuccessNotify"
+        :duration="2000"
+        @close="showNotify = false"
+    />
     <div @click="closeForm" class="fixed inset-0 z-50 min-h-screen bg-black/50 backdrop-blur-sm flex items-center justify-center p-4">
         <div @click.stop class="flex flex-col bg-white px-8 py-10 gap-4 items-center rounded-lg shadow-md w-full max-w-lg">
             <h2 class="text-blue-700 text-2xl font-semibold mb-4">ĐĂNG KÝ TÀI KHOẢN</h2>

@@ -1,26 +1,21 @@
-export interface ICreateCompany{
+export interface ICreateCompany {
     CompanyName: string;
     CompanyDescription?: string;
     TaxCode: string;
     Industry: string;
     Website?: string;
-    LogoUrl?: string | Express.Multer.File;
-    ContactEmail?: string;
-    City?: string;
-    CreatedBy: number;
-    BusinessLicenseUrl: string | Express.Multer.File;
-}
-export interface IUpdateCompany{
-    CompanyName?: string;
-    CompanyDescription?: string;
-    TaxCode: string;
-    Industry?: string;
-    Website?: string;
     LogoUrl?: string;
     ContactEmail?: string;
-    City?: string;
-    BusinessLicenseUrl?: string;
+      City?: string;
+    Position: string;
+    BusinessLicenseUrl: string | File;
 }
+  
+export interface IJoinCompanyRequest {
+    CompanyId: number;
+    Position: string;
+}
+
 export interface ICompanyResponse{
     CompanyID: number;
     CompanyName: string;
@@ -43,8 +38,8 @@ export interface ICompanyDetailResponse {
     CreatedAt: Date;
     UpdatedAt: Date;
 }
-
-
-
-
-
+export interface ICompanyOfMe{
+    CompanyID: number;
+    CompanyName: string;
+    LogoUrl?: string;
+}

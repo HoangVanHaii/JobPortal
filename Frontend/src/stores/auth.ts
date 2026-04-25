@@ -4,6 +4,8 @@ import type { IProfile } from '../types/user';
 import { getProfile, login, register, registerSendOtp, verifyOtp } from '../services/auth';
 import { useMessageStore } from './message';
 import { connectSocket, disconnectSocket } from '../services/socket';
+import type { IUser } from '../types/user';
+
 
 export const useAuthStore = defineStore('auth',() => {
     const loading = ref<boolean>(false);
