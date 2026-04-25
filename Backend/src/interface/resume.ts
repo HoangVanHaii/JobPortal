@@ -1,4 +1,5 @@
 import { Document } from 'mongoose';
+import { Multer } from 'multer';
 
 export interface iResume {
     ResumeID?: number;         
@@ -16,7 +17,7 @@ export interface iResumeDetail extends Document {
     // candidateId: number;    
     title?: string;         
     summary?: string;
-   
+    AvatarUrl?: string;
     skills?: {
         skillId?: number;    
         skillName: string;

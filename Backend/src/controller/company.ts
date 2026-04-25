@@ -50,7 +50,19 @@ export const CreateCompany = async (req: Request, res: Response, next: NextFunct
         connection.release();
     }
 }
+export const getCompanyOfMe = async (req: Request, res: Response, next: NextFunction) => {
+    try {
+        const data = await CompanyService.getCompanyOfMe(req.user!.id);
+        return res.status(200).json({
+            success: true,
+            message: "Lấy thông tin công ty của bạn thành công",
+            data: data
+        });
 
+    } catch (error) {
+        next(error);
+    }
+}
 export const UpdateCompany = async (req: Request, res: Response, next: NextFunction) => {
     try {
         const companyData: IUpdateCompany = req.body;

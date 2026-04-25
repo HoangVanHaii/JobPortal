@@ -12,3 +12,7 @@ export const requestCompany = async (companyID: number, Position: string) => {
     const response = await api.post(`/company/${companyID}/request`, { Position });
     return response.data;
 }
+export const getCompanyOfMe = async () => {
+    const response = await api.get('/company/me');
+    return response.data;
+}

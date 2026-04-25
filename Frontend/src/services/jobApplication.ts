@@ -1,0 +1,17 @@
+import api from "./api";
+
+export const getJobApplications = async (jobID: number, page: number = 1, limit: number = 6) => {
+    const response = await api.get(`/job-application/job/${jobID}`, {
+        
+        params: { page, limit }
+    });
+    return response.data;
+}
+export const getApplicationDetail = async (applicationID: number) => {
+    const response = await api.get(`/job-application/${applicationID}`);
+    return response.data;
+}
+export const updateStatusApplication = async (applicationID: number, status: string) => {
+    const response = await api.put(`/job-application/${applicationID}/status`, { Status: status });
+    return response.data;
+}

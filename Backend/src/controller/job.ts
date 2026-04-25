@@ -102,7 +102,7 @@ export const createJob = async (req: Request, res: Response, next: NextFunction)
         const { categoryId, title, quantity, salaryMin, salaryMax, location, jobType, experienceRequired, expiredDate,
             description, requirements, workingSchedule, benefits, tags, interviewProcess
         } = req.body;
-        
+
         const employerID = Number(req.user!.id);
         const employerProfile = await employerService.checkEmployerProfile(employerID);
 
@@ -122,7 +122,7 @@ export const createJob = async (req: Request, res: Response, next: NextFunction)
             Location: location,
             JobType: jobType,
             ExperienceRequired: experienceRequired,
-            ExpiredDate: expiredDate
+            ExpiredDate:  expiredDate.split('T')[0]
         }
         const rawTextForAi = `
             Chức danh công việc: ${title}.
@@ -163,9 +163,10 @@ export const closeJob = async (req: Request, res: Response, next: NextFunction) 
     try {
         const employerId = parseInt(req.user!.id.toString());
         const jobId = Number(req.params.id);
+        console.log(`Đang xử lý yêu cầu đóng công việc. EmployerID: ${employerId}, JobID: ${jobId}`);
         const isOwner = await jobService.isJobOwner(employerId, jobId);
         if (!isOwner) {
-            throw new AppError('Bạn không phải là người tạo là công việc này', 403)
+            throw new AppError('Bạn không phải người tạo là công việc này', 403)
         }
         await jobService.closeJob(jobId);
         const cacheKey = `job_detail:${jobId}`;

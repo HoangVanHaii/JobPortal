@@ -38,15 +38,15 @@ export const UpdateApplicationStatus = async ( req: Request, res: Response, next
 
         const UserID = req.user!.id;
         if (req.user?.role === "Candidate") {
-            await JobApplicationService.updateApplicationStatusCandidate(4, UserID, status);
+            await JobApplicationService.updateApplicationStatusCandidate(ApplicationID, UserID, status);
         }
         else{
             await JobApplicationService.updateApplicationStatus(ApplicationID, UserID, status);
         }
 
         const JobID = JobApplicationService.getJobIdByApplicationId(ApplicationID);
-        
-        const keys = await redisClient.keys(`application:job:${JobID}:*`);
+
+        const keys = await redisClient.keys(`application:job:*`);
 
         if (keys.length > 0) {
             await redisClient.unlink(keys);
@@ -109,7 +109,6 @@ export const getListApplicationByJobId = async (req: Request, res: Response, nex
             });
         }
         const data = await JobApplicationService.getApplicationByJobId(JobID, page, limit);
-
         await redisClient.set(cacheKey, JSON.stringify(data), { EX: 60 * 5 });
 
         return res.status(200).json({
@@ -136,7 +135,9 @@ export const getApplicationDetail = async (req: Request, res: Response, next: Ne
         }
         const data = await JobApplicationService.getApplicationDetail(ApplicationID);
         await redisClient.set(cacheKey, JSON.stringify(data), { EX: 60 * 5 });
-
+        if (req.user?.role === "Employer") {
+            await JobApplicationService.updateApplicationStatus(ApplicationID, req.user.id, 'Reviewed');
+        }
         return res.status(200).json({
             success: true,
             message: "Lấy đơn ứng tuyển thành công",

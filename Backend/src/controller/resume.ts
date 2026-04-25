@@ -4,6 +4,8 @@ import { AppError } from "../utils/appError";
 import { iResumeDetail } from '../interface/resume'
 import redisClient from '../config/redisClient';
 import { RecommendJobsByAI } from "../service/searchAi";
+import { uploadToCloudinary } from "../utils/uploadToCloudinary";
+import { Candidate } from "../interface/candidate";
 
 export const generateSummaryWithAI = async (req: Request, res: Response, next: NextFunction) => {
     try {
@@ -25,12 +27,25 @@ export const generateSummaryWithAI = async (req: Request, res: Response, next: N
 };
 
 export const createManualResume = async (req: Request, res: Response, next: NextFunction) => {
-    try {        
-        const candidateId = req.user!.id; 
+    try {
+        const candidateId = req.user!.id;
         const resumeData: iResumeDetail = req.body;
-        
-        const result = await resumeService.buildManualResume(candidateId, resumeData);
-        
+        if (req.file) {
+            const uploaded = await uploadToCloudinary("Resumes", req.file as Express.Multer.File);
+            resumeData.AvatarUrl = uploaded.url;
+        }
+        const { FullName, Phone, DateOfBirth, Address, ExperienceYears, Education } = req.body;
+        const candidateProfile: Candidate = {
+            CandidateID: candidateId,
+            FullName,
+            Phone,
+            DateOfBirth,
+            Address,
+            ExperienceYears,
+            Education,
+            AvatarUrl: resumeData.AvatarUrl
+        };
+        const result = await resumeService.buildManualResume(candidateId, resumeData, candidateProfile);
         if (redisClient) {
             await redisClient.del(`resumes:list:${candidateId}`);
             await redisClient.del('all_skills');

@@ -2,8 +2,10 @@ import pool from "../config/database";
 import { Candidate } from "../interface/candidate";
 import { GoogleGenAI } from "@google/genai"; 
 import * as skillService from "./skill";
+import { PoolConnection } from "mysql2/promise";
 
-export const upsertCandidateProfile = async (data: Candidate) => {
+export const upsertCandidateProfile = async (connection: PoolConnection, data: Candidate) => {
+    console.log("Dữ liệu hồ sơ ứng viên nhận được để upsert:", data);
     const query = `INSERT INTO Candidates (CandidateID, FullName, Phone, DateOfBirth, Address, ExperienceYears, Education, AvatarUrl)
                    VALUES (?, ?, ?, ?, ?, ?, ?, ?) ON DUPLICATE KEY UPDATE
                        FullName = VALUES(FullName),
@@ -25,7 +27,8 @@ export const upsertCandidateProfile = async (data: Candidate) => {
         data.AvatarUrl || null
     ];
 
-    const [result]: any = await pool.query(query, values);
+    const [result]: any = await connection.query(query, values);
+    console.log("Kết quả upsert hồ sơ ứng viên:", result);
     return result;
 };
 
@@ -177,20 +180,9 @@ const syncCandidateSkills = async (connection: any, userId: number, finalSkillId
     }
 };
 
-export const updateCandidateSkills = async (userId: number, skillsToSave: any[]) => {
-    const connection = await pool.getConnection();
-    try {
-        await connection.beginTransaction();
-        const finalSkills = await ensureSkillsExist(connection, skillsToSave);
-        await syncCandidateSkills(connection, userId, finalSkills);
-
-        await connection.commit();
-    } catch (error) {
-        await connection.rollback();
-        throw error; 
-    } finally {
-        connection.release();
-    }
+export const updateCandidateSkills = async (connection: PoolConnection, userId: number, skillsToSave: any[]) => {
+    const finalSkills = await ensureSkillsExist(connection, skillsToSave);
+    await syncCandidateSkills(connection, userId, finalSkills);
 };
 
 export const getCandidatesListForEmployer = async () => {

@@ -2,7 +2,7 @@ import { PoolConnection } from "mysql2/promise";
 import pool from "../config/database";
 import { generateEmbedding } from "./searchAi";
 import { pineconeIndex } from "../config/pinecone";
-import { IJobPayload, IJob, IJobFilters, IJobDetailPayload, IJobDetail, IInterviewRound } from "../interface/job";
+import { IJobPayload, IListJob, IJob, IJobFilters, IJobDetailPayload, IJobDetail, IInterviewRound } from "../interface/job";
 import { JobDetailModel } from "../model/job";
 import { generateAndStoreVector } from '../utils/ai';
 
@@ -47,6 +47,7 @@ export const createJob = async (job: IJobPayload, jobDetail: IJobDetailPayload) 
         throw error;
     }
 }
+
 export const processJobVector = async (jobId: number, rawTextForAi: string) => {
     try {
         const vector = await generateEmbedding(rawTextForAi);
@@ -262,11 +263,30 @@ export const getJobOfMe = async (page: number, limit: number) => {
     const offset = (page - 1) * limit;
     const queryParams: any[] = [];
 
-    let query = `SELECT j.JobID, j.Title, j.Location, j.CreatedAt, c.CompanyName, c.LogoUrl AS CompanyLogo, j.Status
+    let query = `
+        SELECT 
+            j.JobID, 
+            j.Title, 
+            j.Location, 
+            j.CreatedAt, 
+            c.CompanyName, 
+            c.LogoUrl AS CompanyLogo, 
+            j.Status,
+            COUNT(ja.ApplicationID) AS ApplicationCount
         FROM jobs j
         JOIN employers e ON j.EmployerID = e.EmployerID
         JOIN companies c ON e.CompanyID = c.CompanyID
-        ORDER BY j.CreatedAt DESC LIMIT ? OFFSET ?`;
+        LEFT JOIN jobApplications ja ON j.JobID = ja.JobID
+        GROUP BY 
+            j.JobID, 
+            j.Title, 
+            j.Location, 
+            j.CreatedAt, 
+            c.CompanyName, 
+            c.LogoUrl, 
+            j.Status
+        ORDER BY j.CreatedAt DESC 
+        LIMIT ? OFFSET ?`;
 
     queryParams.push(limit, offset);
     const [rows]: any = await pool.query(query, queryParams);
@@ -274,11 +294,11 @@ export const getJobOfMe = async (page: number, limit: number) => {
     const jobIds = rows.map((job: any) => job.JobID);
     const finalJobList = await mergeJob(jobIds, rows)
 
-    return finalJobList as IJob[];
+    return finalJobList as IListJob[];
 }
 export const isJobOwner = async (employerId: number, jobId: number) => {
     const query = `SELECT EmployerID FROM jobs WHERE JobID = ? AND EmployerID = ?`;
-    const value = [employerId, jobId]
+    const value = [jobId, employerId]
     const [rows]: any = await pool.query(query, value);
     return rows.length > 0;
 }
@@ -305,6 +325,8 @@ export const getJobsByIds = async (jobIds: number[], placeholders: string) => {
         ORDER BY FIELD(j.JobID, ${placeholders})
         LIMIT 5
     `;
+    console.log("Executing SQL:", "with jobIds:", jobIds);
+    console.log("SQL placeholders:", placeholders);
     const [jobs]: any = await pool.query(sql, [...jobIds, ...jobIds]);
     return jobs as IJob[];
 }

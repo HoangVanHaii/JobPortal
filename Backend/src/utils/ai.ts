@@ -14,12 +14,10 @@ export const generateAndStoreVector = async (
         const response = await ai.models.embedContent({
             model: 'gemini-embedding-001', 
             contents: textToEmbed,
-            config: {
-                outputDimensionality: 768 
-            }
+            // config: {
+            //     outputDimensionality: 768 
+            // }
         });
-        console.log(response)
-
         const vectorValues = response.embeddings?.[0]?.values; 
 
         if (!vectorValues) {

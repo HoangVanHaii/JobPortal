@@ -10,4 +10,5 @@ router.post('/register', userMiddleware.registerValidation, validateRequest, use
 router.post('/login', userMiddleware.loginValidation, validateRequest, userController.login);
 router.post('/refresh-token', userMiddleware.refreshTokenValidation, validateRequest, userController.refreshToken);
 
+
 export default router;

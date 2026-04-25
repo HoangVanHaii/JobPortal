@@ -1,6 +1,6 @@
 import { ref } from 'vue';
 import { defineStore } from 'pinia';
-import { CreateCompany, GetAllCompany, requestCompany } from '../services/company';
+import { CreateCompany, GetAllCompany, getCompanyOfMe, requestCompany } from '../services/company';
 import type { ICompanyResponse } from '../types/company';
 
 export const useCompanyStore = defineStore('company',() => {
@@ -57,7 +57,22 @@ export const useCompanyStore = defineStore('company',() => {
             loading.value = false;
         }
     }
-
+    const getCompanyOfMeStore = async () => {
+        try {
+            error.value = false;
+            loading.value = true;
+            message.value = '';
+            const data = await getCompanyOfMe();
+            message.value = data.message || 'Lấy thông tin công ty thành công';
+            return data.data || null;
+        } catch (err: any) {
+            error.value = true;
+            console.error("Lỗi khi lấy danh sách công ty của tôi:", err.response?.data);
+            message.value = err.response?.data?.message || ':ỗi khi lấy thông tin công ty của tôi';
+        } finally {
+            loading.value = false;
+        }
+    }
     return {
         loading,
         message,
@@ -65,7 +80,8 @@ export const useCompanyStore = defineStore('company',() => {
         listCompany,
         createCompanyStore,
         getAllCompanyStore,
-        requestCompanyStore
+        requestCompanyStore,
+        getCompanyOfMeStore
     }
 
 })

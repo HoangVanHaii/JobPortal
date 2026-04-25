@@ -2,9 +2,10 @@ import { GoogleGenAI } from '@google/genai';
 import pool from "../config/database"; 
 import { AppError } from '../utils/appError';
 import { iResumeDetail,iResume } from '../interface/resume';
-import { updateCandidateSkills } from './candidate';
+import { updateCandidateSkills, upsertCandidateProfile } from './candidate';
 import ResumeDetail from '../model/resumeDetail';
 import { generateAndStoreVector } from '../utils/ai';
+import { Candidate } from '../interface/candidate';
 const ai = new GoogleGenAI({});
 
 export const generateResumeSummary = async (resumeData: any) => {
@@ -64,22 +65,25 @@ const buildResumeRichText = (data: iResumeDetail) => {
     return `Tiêu đề CV: ${data.title || ''}. Tóm tắt: ${data.summary || ''}. Kỹ năng chuyên môn: ${skills}. Kinh nghiệm làm việc: ${experience}. Học vấn: ${education}.`;
 };
 
-export const buildManualResume = async (candidateId: number, resumeData: iResumeDetail) => {
+export const buildManualResume = async (candidateId: number, resumeData: iResumeDetail, candidate: Candidate) => {
     const connection = await pool.getConnection();
     await connection.beginTransaction();
 
     try {
+        await upsertCandidateProfile(connection, candidate);
+
         const query = `INSERT INTO Resumes (CandidateID, Title, Summary, IsAnalyzed) VALUES (?, ?, ?, ?)`;
         const [result]: any = await connection.query(query, [
-            candidateId, resumeData.title || 'CV Chưa Đặt Tên', resumeData.summary || null, true 
+            candidateId, resumeData.title || 'CV Chưa Đặt Tên', resumeData.summary || null, true
         ]);
         const newResumeId = result.insertId;
 
         const newResumeDetail = new ResumeDetail({
             resumeId: newResumeId,
             title: resumeData.title || 'CV Chưa Đặt Tên',
+            AvatarUrl: resumeData.AvatarUrl || null,
             summary: resumeData.summary,
-            skills: resumeData.skills || [], 
+            skills: resumeData.skills || [],
             experience: resumeData.experience || [],
             education: resumeData.education || [],
             projects: resumeData.projects || []
@@ -87,12 +91,12 @@ export const buildManualResume = async (candidateId: number, resumeData: iResume
         await newResumeDetail.save();
 
         if (resumeData.skills && resumeData.skills.length > 0) {
-            await updateCandidateSkills(candidateId, resumeData.skills);
+            await updateCandidateSkills(connection, candidateId, resumeData.skills);
         }
         await connection.commit();
-        // processResumeAI(newResumeId, resumeData).catch(err => {
-        //     console.error("AI background error:", err);
-        // });
+        processResumeAI(newResumeId, resumeData).catch(err => {
+            console.error("AI background error:", err);
+        });
         return { resumeId: newResumeId };
     } catch (error) {
         await connection.rollback();
@@ -101,6 +105,7 @@ export const buildManualResume = async (candidateId: number, resumeData: iResume
         connection.release();
     }
 };
+
 const processResumeAI = async (resumeId: number, resumeData: iResumeDetail) => {
     try {
         const richText = buildResumeRichText(resumeData);
@@ -163,7 +168,7 @@ export const updateManualResume = async (candidateId: number, resumeId: number, 
         );
 
         if (resumeData.skills && resumeData.skills.length > 0) {
-            await updateCandidateSkills(candidateId, resumeData.skills);
+            await updateCandidateSkills(connection, candidateId, resumeData.skills);
         }
 
         const richText = buildResumeRichText(resumeData);
