@@ -8,17 +8,6 @@ export interface IJob {
     Description: string;
     Status: string;
 }
-export interface IListJob {
-    JobID?: number;
-    Title: string;
-    Location: string;
-    CreatedAt?: Date;
-    CompanyName: string;
-    CompanyLogo: string;
-    Description: string;
-    Status: string;
-    ApplicationCount: number;   
-}
 export interface IJobDetail {
     JobID: number;
     Title: string;
@@ -74,4 +63,18 @@ export interface IJobFilters {
     Location?: string;
     MinSalary?: number;
     MaxSalary?: number;
+}
+
+
+//
+export interface IListJob {
+    JobID?: number;
+    Title: string;
+    Location: string;
+    CreatedAt?: Date;
+    CompanyName: string;
+    CompanyLogo: string;
+    Description: string;
+    Status: string;
+    ApplicationCount: number;   
 }

@@ -117,6 +117,15 @@ export const getCompanyIdOfMe = async (userID: number): Promise<number | null> =
 
     return rows[0].CompanyID;
 };
+export const getCompanyOfMe = async (userId: number) => {
+    const query = `
+        SELECT c.CompanyID, c.CompanyName, c.LogoUrl
+            FROM employers e
+            JOIN companies c ON c.CompanyID = e.CompanyID
+        WHERE e.EmployerID = ?`;
+    const [rows]: any = await pool.query(query, [userId]);
+    return rows[0];
+}
 export const CheckCompanyId = async (CompanyID: number): Promise<Boolean> => {
     const query = `SELECT CompanyID FROM Companies WHERE CompanyID = ?`;
 

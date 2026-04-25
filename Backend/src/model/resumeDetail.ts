@@ -6,7 +6,7 @@ const ResumeDetailSchema: Schema = new Schema({
     // candidateId: { type: Number, required: true, index: true }, 
     title: { type: String, required: true },
     summary: { type: String },
-    
+    AvatarUrl: { type: String },
     skills: [{ 
         skillId: { type: Number },
         skillName: { type: String, required: true },

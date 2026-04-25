@@ -3,34 +3,35 @@ import * as candidateService from '../service/candidate';
 import { AppError } from "../utils/appError";
 import { uploadToCloudinary } from '../utils/uploadToCloudinary';
 import * as resumeService from '../service/resume';
+import pool from "../config/database";
 
 export const upsertProfile = async (req: Request, res: Response, next: NextFunction) => {
-    try {
-        const userId = req.user!.id;
-        let avatarUrl = req.body.AvatarUrl; 
+    // try {
+    //     const userId = req.user!.id;
+    //     let avatarUrl = req.body.AvatarUrl; 
 
-        if (req.file) {
-            avatarUrl = await uploadToCloudinary('Candidates', req.file);
-        }
+    //     if (req.file) {
+    //         avatarUrl = await uploadToCloudinary('Candidates', req.file);
+    //     }
 
-        const profileData = {
-            ...req.body,
-            CandidateID: userId,
-            AvatarUrl: avatarUrl 
-        };
+    //     const profileData = {
+    //         ...req.body,
+    //         CandidateID: userId,
+    //         AvatarUrl: avatarUrl 
+    //     };
 
-        await candidateService.upsertCandidateProfile(profileData);
+    //     await candidateService.upsertCandidateProfile(profileData);
 
-        return res.status(200).json({ 
-            success: true,
-            message: "Cập nhật hồ sơ ứng viên thành công!",
-            data: profileData
-        });
+    //     return res.status(200).json({ 
+    //         success: true,
+    //         message: "Cập nhật hồ sơ ứng viên thành công!",
+    //         data: profileData
+    //     });
 
-    } catch (error) {
-        console.log(error);
-        next(error);
-    }
+    // } catch (error) {
+    //     console.log(error);
+    //     next(error);
+    // }
 };
 
 export const getProfile = async (req: Request, res: Response, next: NextFunction) => {
@@ -87,17 +88,20 @@ export const analyzeSkillsText = async (req: Request, res: Response, next: NextF
 };
 
 export const saveAnalyzedSkills = async (req: Request, res: Response, next: NextFunction) => {
+    const connection = await pool.getConnection();
     try {
+        await connection.beginTransaction();
         const userId = req.user!.id; 
         const { skills } = req.body; 
 
-        await candidateService.updateCandidateSkills(userId, skills);
-
+        await candidateService.updateCandidateSkills(connection, userId, skills);
+        await connection.commit();
         return res.status(200).json({
             success: true,
             message: "Cập nhật hồ sơ kỹ năng thành công!"
         });
     } catch (error) {
+        await connection.rollback();
         next(error);
     }
 };

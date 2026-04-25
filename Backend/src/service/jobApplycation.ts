@@ -196,6 +196,7 @@ export const getApplicationByJobId = async (JobID: number, page: number, limit: 
             app.ApplicationID,
             can.FullName,
             can.ExperienceYears,
+            can.AvatarUrl,
             app.MatchScore,
             app.Status,
             app.CreatedAt

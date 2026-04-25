@@ -1,7 +1,7 @@
 import { ref } from 'vue';
 import { defineStore } from 'pinia';
 import type { IUser } from '../types/user';
-import { login, register, registerSendOtp, verifyOtp } from '../services/auth';
+import {  login, register, registerSendOtp, verifyOtp } from '../services/auth';
 
 export const useAuthStore = defineStore('auth',() => {
     const loading = ref<boolean>(false);
@@ -92,7 +92,6 @@ export const useAuthStore = defineStore('auth',() => {
             loading.value = false;
         }
     }
-
     return {
         loading,
         message,
@@ -107,7 +106,7 @@ export const useAuthStore = defineStore('auth',() => {
         registerSendOtpStore,
         verifyOtpStore,
         registerStore,
-        loginStore
+        loginStore,
     }
 
 })

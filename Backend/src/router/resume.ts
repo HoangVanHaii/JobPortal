@@ -3,11 +3,13 @@ import * as resumeController from "../controller/resume";
 import { authMiddleware, isCandidate, isEmployer } from "../middleware/auth";
 import * as resumeMiddleware from '../middleware/resume';
 import { validateRequest } from '../middleware/validateRequest';
+import { upload } from "../utils/upload";
+import { upsertProfileValidation } from "../middleware/candidate";
 
 const router = Router();
 
 router.post("/generate-summary", authMiddleware, resumeMiddleware.generateSummaryValidation, validateRequest, resumeController.generateSummaryWithAI);
-router.post("/build", authMiddleware, isCandidate, resumeMiddleware.buildResumeValidation, validateRequest, resumeController.createManualResume);
+router.post("/build", authMiddleware, isCandidate, upload.single("AvatarUrl"), upsertProfileValidation, resumeMiddleware.buildResumeValidation, validateRequest, resumeController.createManualResume);
 router.get("/", authMiddleware, resumeController.getMyResumes);
 
 router.get("/detail/:resumeId", authMiddleware, resumeMiddleware.ResumeIdValidation, validateRequest, resumeController.getResumeDetail);

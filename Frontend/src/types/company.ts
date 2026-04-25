@@ -38,3 +38,8 @@ export interface ICompanyDetailResponse {
     CreatedAt: Date;
     UpdatedAt: Date;
 }
+export interface ICompanyOfMe{
+    CompanyID: number;
+    CompanyName: string;
+    LogoUrl?: string;
+}

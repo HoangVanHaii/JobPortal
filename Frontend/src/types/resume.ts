@@ -1,8 +1,8 @@
 export interface iResumeDetail{
     resumeId?: number;
-    // candidateId: number;    
     title?: string;         
     summary?: string;
+    avatarUrl?: string | File;
    
     skills?: {
         skillId?: number;    
